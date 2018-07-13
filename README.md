@@ -2,13 +2,13 @@
 Main script is "_tripAdivisor-test.py"
 Last working version is "_tripAdvisor.py"
 
-## Script to pull data from Trip Advisor's "Things to do page"
+## Script to pull data from Trip Advisor's "Things to do" search results
 This code takes data from Trip Advisor about attractions in the location/city, to be
 stored in a csv file (wip) and to be cleaned using pandas.
 
 Data includes each attraction's Title, Rating, Review Count, Phone Number, Address, Locality, Country, Opening Hours
 
-# Data Heirarchy [Each is a field in the csv]
+# Data Heirarchy (Each is a field in the csv)
 
 ## Title
  The title of each attraction as a string
@@ -24,7 +24,7 @@ Data includes each attraction's Title, Rating, Review Count, Phone Number, Addre
  The locality (usually zip code and province) as a string
 ## Country
  The country where the location/city is as a string
-## Opening Hours
+## Opening Hours (WIP)
  Times each attraction is open as a list of tuples for each combination
  of opening hours for every day of the week
 ## Estimated Cost (WIP)
