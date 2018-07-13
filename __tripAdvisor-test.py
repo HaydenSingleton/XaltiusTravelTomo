@@ -12,7 +12,7 @@ from pandas import DataFrame
 from bs4 import BeautifulSoup
 
 # Global variables
-column_titles = ['Title', 'Rating', 'Review Count', 'Phone Number', 'Address', 'Locality', 'Country', 'Opening Hours']
+column_titles = ['Title', 'Rating', 'Review Count', 'Phone Number', 'Address', 'Locality', 'Country']#, 'Opening Hours']
 headers = {'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36'}
 
 
@@ -61,7 +61,7 @@ def search(query):
         print("\t" + str(links_found), "Visiting..")  # , end="")
         data = []
 
-        for i in range(3):
+        for i in range(links_found):
             # print(str(i), "..", end=" ")
             # Visit each page
             browser.get(links[i])
@@ -100,17 +100,17 @@ def search(query):
             except Exception:
                 country = None
 
-            try:
-                hours = None  # TODO
-            except Exception as e:
-                print("Hours failed- ", end="")
-                print(e)
-                hours = None
+            # try:
+            #     hours = None  # TODO
+            # except Exception as e:
+            #     print("Hours failed- ", end="")
+            #     print(e)
+            #     hours = None
             
             if "Add" in phone:
                 phone = None
 
-            newrow = [title, rating, reviews, phone, address, local, country, hours]
+            newrow = [title, rating, reviews, phone, address, local, country]#, hours]
             print(newrow)
             data.append(newrow)
 
@@ -138,7 +138,7 @@ def main():
         print("Beginning search in",place.capitalize())
         df = search(place.capitalize())
         print(df.head())
-        df.to_csv(path_or_buf=filename,index_label="Record", columns=column_titles)
+        df.to_csv(path_or_buf=filename,index_label="Index", columns=column_titles)
 
 
 if __name__ == '__main__':
