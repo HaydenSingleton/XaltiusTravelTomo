@@ -1,4 +1,4 @@
-import os
+import sys
 import pandas as pd
 import time
 from selenium import webdriver
@@ -49,27 +49,27 @@ def search(query):
 
     while page_num < 5:
         page_num += 1
+
         # print("Visiting results page: {}".format(page_num))
         # Grab the current url for later returning to this page
-        current_page = browser.current_url
+        # current_page = browser.current_url
 
         # Get each attraction
         soup = BeautifulSoup(browser.page_source, "html5lib")
         attractions = soup.find_all("div", {"class": "listing_title "})
         links = [site_url + item.a['href'] for item in attractions if "Attraction_Review" in item.a['href']]
         links_found = len(links)
-        print("\t" + str(links_found), "Visiting..")  # , end="")
+        print(f"\nFound {links_found} links on page {page_num}..", end="")
         data = []
-
-        block = soup.find("a", class_="next")
-        next_page = site_url + block.get('href')
+        next_page = site_url + soup.find("a", class_="next").get('href')
 
         for i in range(links_found):
-            # print(str(i), "..", end=" ")
+            print(str(i)+".", end="")
             # Visit each page
             browser.get(links[i])
-            soup = BeautifulSoup(browser.page_source, 'html5lib')
+
             # Scrape data
+            soup = BeautifulSoup(browser.page_source, 'html5lib')
             try:
                 title = soup.find('h1', id='HEADING').text  # .split('\u200e')[0]
             except Exception:
@@ -84,8 +84,7 @@ def search(query):
                 rating = None
             try:
                 phone = soup.find("div", class_=['detail_section', 'phone']).text
-            except Exception as e:
-                print(e)
+            except Exception:
                 phone = None
             try:
                 address = soup.find("span", class_="street-address").text
@@ -99,7 +98,7 @@ def search(query):
             except Exception:
                 local = None
             try:
-                country = soup.find("span", class_="country").text
+                country = soup.find("span", class_="country-name").text
             except Exception:
                 country = None
 
@@ -114,10 +113,8 @@ def search(query):
                 phone = None
 
             newrow = [title, rating, reviews, phone, address, local, country]  # , hours]
-            # print(newrow)
             data.append(newrow)
 
-        next_button = browser.find_element_by_xpath("""//*[@id="FILTERED_LIST"]/div[34]/div/div/a""")
         browser.get(next_page)
 
     browser.quit()
@@ -126,12 +123,16 @@ def search(query):
 
 
 def main():
-    destinations = ['singapore']
+    if len(sys.argv) > 1:
+        destinations = ['singapore']
+    else:
+        destinations = sys.argv[1:]
     for place in destinations:
         filename = place + '_data.csv'
         print("Beginning search in", place.capitalize())
         df = search(place.capitalize())
-
+        print(df.head())
+        print(df.tail())
         df.to_csv(path_or_buf=filename, index_label="Index", columns=column_titles)
 
 
