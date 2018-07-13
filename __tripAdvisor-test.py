@@ -2,12 +2,12 @@ import sys
 import pandas as pd
 import time
 from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.keys import Keys
+# from selenium.webdriver.chrome.options import Options
+# from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
-from selenium.common.exceptions import NoSuchElementException, TimeoutException
+from selenium.common.exceptions import TimeoutException
 from pandas import DataFrame
 from bs4 import BeautifulSoup
 
@@ -45,7 +45,7 @@ def search(query):
 
     # Visit all pages of results until "Next" button dissappears
     page_num = 0
-    pages_to_scrape = 2
+    pages_to_scrape = 4
     data = []
 
     while page_num < pages_to_scrape:
@@ -59,13 +59,17 @@ def search(query):
         soup = BeautifulSoup(browser.page_source, "html5lib")
         attractions = soup.find_all("div", {"class": "listing_title "})
         links = [site_url + item.a['href'] for item in attractions if "Attraction_Review" in item.a['href']]
-        links_found = len(links)
-        print(f"\nFound {links_found} links on page {page_num}..", end="")
-        data = []
-        next_page = site_url + soup.find("a", class_="next").get('href')
+        
+        print(f"\nFound {len(links)} links on page {page_num}..", end="")
 
-        for i in range(links_found):
-            print(str(i)+".", end="")
+        try:
+            next_page = site_url + soup.find("a", class_="next").get('href')
+        except AttributeError:
+            next_page = None
+
+        for i in range(len(links)):
+
+            print(str(i) + ".", end="")
             # Visit each page
             browser.get(links[i])
 
@@ -115,8 +119,9 @@ def search(query):
 
             newrow = [title, rating, reviews, phone, address, local, country]  # , hours]
             data.append(newrow)
-
-        browser.get(next_page)
+            
+        if not next_page == None:
+            browser.get(next_page)
 
     browser.quit()
     final_df = pd.DataFrame(data, columns=list(column_titles))
@@ -124,16 +129,16 @@ def search(query):
 
 
 def main():
-    if len(sys.argv) > 1:
+    if len(sys.argv) < 2:
         destinations = ['singapore']
     else:
         destinations = sys.argv[1:]
     for place in destinations:
+        place = place.capitalize()
         filename = place + '_data.csv'
-        print("Beginning search in", place.capitalize())
-        df = search(place.capitalize())
+        print("Beginning search in", place)
+        df = search(place)
         print(df.head())
-        print(df.tail())
         df.to_csv(path_or_buf=filename, index_label="Index", columns=column_titles)
 
 
