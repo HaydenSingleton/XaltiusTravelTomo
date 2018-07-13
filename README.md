@@ -1,6 +1,6 @@
 # TravelTomo
-Main script is _tripAdivisor-test
-Last working version is _tripAdvisor
+Main script is "_tripAdivisor-test.py"
+Last working version is "_tripAdvisor.py"
 
 # Script to pull data from Trip Advisor's "Things to do page"
 This code takes data from Trip Advisor about attractions in the location/city, to be
