@@ -60,7 +60,7 @@ def search(query):
         attractions = soup.find_all("div", {"class": "listing_title "})
         links = [site_url + item.a['href'] for item in attractions if "Attraction_Review" in item.a['href']]
         numlinks = len(links)
-        print(f"\nFound {numlinks} links on page {page_num}..", end="")
+        print(f"\nFound {numlinks} links on page {page_num} of {pages_to_scrape}..", end="")
 
         try:
             next_page = site_url + soup.find("a", class_="next").get('href')
@@ -123,6 +123,7 @@ def search(query):
         if next_page:
             browser.get(next_page)
         else:
+            print("No more pages")
             break
 
     browser.quit()
