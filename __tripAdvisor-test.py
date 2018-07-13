@@ -61,6 +61,9 @@ def search(query):
         print("\t" + str(links_found), "Visiting..")  # , end="")
         data = []
 
+        block = soup.find("a", class_="next")
+        next_page = site_url + block.get('href')
+
         for i in range(links_found):
             # print(str(i), "..", end=" ")
             # Visit each page
@@ -111,19 +114,11 @@ def search(query):
                 phone = None
 
             newrow = [title, rating, reviews, phone, address, local, country]  # , hours]
-            print(newrow)
+            # print(newrow)
             data.append(newrow)
 
-        browser.get(current_page)
-
-        break
-        # try:
-        #     block = soup.find("a", class_="next")
-        #     next_page = site_url + block.get('href')
-        #     browser.get(next_page)
-        # except AttributeError:
-        #     print("Failed to get next page.")
-        #     break
+        next_button = browser.find_element_by_xpath("""//*[@id="FILTERED_LIST"]/div[34]/div/div/a""")
+        browser.get(next_page)
 
     browser.quit()
     final_df = pd.DataFrame(data, columns=list(column_titles))
