@@ -61,7 +61,7 @@ def search(query):
         print("\t" + str(links_found), "Visiting..")  # , end="")
         data = []
 
-        for i in range(3):
+        for i in range(links_found):
             # print(str(i), "..", end=" ")
             # Visit each page
             browser.get(links[i])
@@ -108,7 +108,7 @@ def search(query):
                 hours = None
             
             if "Add" in phone:
-                phone = ""
+                phone = None
 
             newrow = [title, rating, reviews, phone, address, local, country]
             print(newrow)
@@ -125,18 +125,19 @@ def search(query):
             break
 
     browser.quit()
-    print(data)
     final_df = pd.DataFrame(data, columns=list(column_titles))
+    print(final_df)
     return final_df
 
 
 def main():
     destinations = ['singapore']
     for place in destinations:
-        # filename = place + '_data(ByPd).csv'
+        filename = place + '_data.csv'
         print("Beginning search in",place.capitalize())
         df = search(place.capitalize())
         print(df.head())
+        df.to_csv(path_or_buf=filename,index_label="Record", columns=column_titles)
 
 
 if __name__ == '__main__':
