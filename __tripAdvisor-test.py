@@ -61,7 +61,7 @@ def search(query):
         print("\t" + str(links_found), "Visiting..")  # , end="")
         data = []
 
-        for i in range(links_found):
+        for i in range(3):
             # print(str(i), "..", end=" ")
             # Visit each page
             browser.get(links[i])
@@ -111,7 +111,7 @@ def search(query):
                 phone = ""
 
             newrow = [title, rating, reviews, phone, address, local, country]
-            # print(newrow)
+            print(newrow)
             data.append(newrow)
 
         browser.get(current_page)
@@ -136,6 +136,7 @@ def main():
         # filename = place + '_data(ByPd).csv'
         print("Beginning search in",place.capitalize())
         df = search(place.capitalize())
+        print(df.head())
 
 
 if __name__ == '__main__':
