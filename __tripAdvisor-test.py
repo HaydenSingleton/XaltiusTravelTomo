@@ -61,7 +61,7 @@ def search(query):
         print("\t" + str(links_found), "Visiting..")  # , end="")
         data = []
 
-        for i in range(links_found):
+        for i in range(3):
             # print(str(i), "..", end=" ")
             # Visit each page
             browser.get(links[i])
@@ -101,7 +101,7 @@ def search(query):
                 country = None
 
             try:
-                hours = ""  # TODO
+                hours = None  # TODO
             except Exception as e:
                 print("Hours failed- ", end="")
                 print(e)
@@ -110,19 +110,20 @@ def search(query):
             if "Add" in phone:
                 phone = None
 
-            newrow = [title, rating, reviews, phone, address, local, country]
+            newrow = [title, rating, reviews, phone, address, local, country, hours]
             print(newrow)
             data.append(newrow)
 
         browser.get(current_page)
 
-        try:
-            block = soup.find("a", class_="next")
-            next_page = site_url + block.get('href')
-            browser.get(next_page)
-        except AttributeError:
-            print("Failed to get next page.")
-            break
+        break
+        # try:
+        #     block = soup.find("a", class_="next")
+        #     next_page = site_url + block.get('href')
+        #     browser.get(next_page)
+        # except AttributeError:
+        #     print("Failed to get next page.")
+        #     break
 
     browser.quit()
     final_df = pd.DataFrame(data, columns=list(column_titles))
