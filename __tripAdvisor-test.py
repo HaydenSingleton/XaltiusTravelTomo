@@ -8,7 +8,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import TimeoutException
-from pandas import DataFrame
+# from pandas import DataFrame
 from bs4 import BeautifulSoup
 
 # Global variables
@@ -67,7 +67,7 @@ def search(query):
         except AttributeError:
             next_page = None
 
-        for i in range(3):
+        for i in range(numlinks):
 
             print(str(i) + ".", end="")
             # Visit each page
@@ -132,7 +132,7 @@ def search(query):
 
 def main():
     if len(sys.argv) < 2:
-        destinations = ['singapore']
+        destinations = ['cambodia', 'japan']
     else:
         destinations = sys.argv[1:]
     for place in destinations:
