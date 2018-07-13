@@ -59,15 +59,15 @@ def search(query):
         soup = BeautifulSoup(browser.page_source, "html5lib")
         attractions = soup.find_all("div", {"class": "listing_title "})
         links = [site_url + item.a['href'] for item in attractions if "Attraction_Review" in item.a['href']]
-        
-        print(f"\nFound {len(links)} links on page {page_num}..", end="")
+        numlinks = len(links)
+        print(f"\nFound {numlinks} links on page {page_num}..", end="")
 
         try:
             next_page = site_url + soup.find("a", class_="next").get('href')
         except AttributeError:
             next_page = None
 
-        for i in range(len(links)):
+        for i in range(3):
 
             print(str(i) + ".", end="")
             # Visit each page
@@ -119,9 +119,11 @@ def search(query):
 
             newrow = [title, rating, reviews, phone, address, local, country]  # , hours]
             data.append(newrow)
-            
-        if not next_page == None:
+
+        if next_page:
             browser.get(next_page)
+        else:
+            break
 
     browser.quit()
     final_df = pd.DataFrame(data, columns=list(column_titles))
