@@ -45,9 +45,10 @@ def search(query):
 
     # Visit all pages of results until "Next" button dissappears
     page_num = 0
+    pages_to_scrape = 2
     data = []
 
-    while page_num < 5:
+    while page_num < pages_to_scrape:
         page_num += 1
 
         # print("Visiting results page: {}".format(page_num))
