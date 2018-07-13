@@ -2,7 +2,7 @@
 Main script is "_tripAdivisor-test.py"
 Last working version is "_tripAdvisor.py"
 
-# Script to pull data from Trip Advisor's "Things to do page"
+## Script to pull data from Trip Advisor's "Things to do page"
 This code takes data from Trip Advisor about attractions in the location/city, to be
 stored in a csv file (wip) and to be cleaned using pandas.
 
