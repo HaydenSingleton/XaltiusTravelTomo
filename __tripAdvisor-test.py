@@ -15,7 +15,7 @@ from selenium.common.exceptions import TimeoutException
 from bs4 import BeautifulSoup
 
 # Global variables
-column_titles = ['Title', 'Rating', 'Review Count', 'Phone Number', 'Address', 'Locality', 'Country']  # , 'Opening Hours']
+column_titles = ['Title', 'Rating', 'Review Count', 'Phone Number', 'Address', 'Locality', 'Country', 'Date Generated']  # , 'Opening Hours']
 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36'}
 
 
@@ -50,20 +50,17 @@ def search(query):
     page_num = 0
     pages_to_scrape = 20
     data = []
+    date_gen = datetime.today().replace(microsecond=0)
 
     while page_num < pages_to_scrape:
         page_num += 1
-
-        # print("Visiting results page: {}".format(page_num))
-        # Grab the current url for later returning to this page
-        # current_page = browser.current_url
 
         # Get each attraction
         soup = BeautifulSoup(browser.page_source, "html5lib")
         attractions = soup.find_all("div", {"class": "listing_title "})
         links = [site_url + item.a['href'] for item in attractions if "Attraction_Review" in item.a['href']]
         numlinks = len(links)
-        print(f"\nFound {numlinks} links on page {page_num} of {pages_to_scrape}..", end="")
+        print(f"\nFound {numlinks} links on page {page_num}/{pages_to_scrape}--", end="")
 
         try:
             next_page = site_url + soup.find("a", class_="next").get('href')
@@ -72,14 +69,14 @@ def search(query):
 
         for i in range(numlinks):
 
-            print(str(i) + ".", end="")
+            print(str(i) + ".", end="", flush=True)
             # Visit each page
             browser.get(links[i])
 
             # Scrape data
             soup = BeautifulSoup(browser.page_source, 'html5lib')
             try:
-                title = soup.find('h1', id='HEADING').text  # .split('\u200e')[0]
+                title = soup.find('h1', id='HEADING').text
             except Exception:
                 title = None
             try:
@@ -91,18 +88,23 @@ def search(query):
             except Exception:
                 rating = None
             try:
-                phone = soup.find("div", class_=['detail_section', 'phone']).text
+                phone = soup.find("div", class_=['phone']).text
+                for c in phone:
+                    if c.isalpha():
+                        phone = None
+                        break
             except Exception:
                 phone = None
             try:
-                address = soup.find("span", class_="street-address").text
+                address = soup.find("span", class_="street-address").text.rstrip(',')
             except Exception:
-                try:
-                    address = soup.find("span", class_="extended-address").text
-                except Exception:
-                    address = None
+                address = None
             try:
-                local = soup.find("span", class_="locality").text
+                exaddress = soup.find("span", class_="extended-address").text
+            except Exception:
+                exaddress = None
+            try:
+                local = soup.find("span", class_="locality").text.replace(',', '')
             except Exception:
                 local = None
             try:
@@ -110,22 +112,16 @@ def search(query):
             except Exception:
                 country = None
 
-            # try:
-            #     hours = None  # TODO
-            # except Exception as e:
-            #     print("Hours failed- ", end="")
-            #     print(e)
-            #     hours = None
+            if address is None:
+                address = exaddress
 
-            if "Add" in phone:
-                phone = None
-
-            newrow = [title, rating, reviews, phone, address, local, country]  # , hours]
+            newrow = [title, rating, reviews, phone, address, local, country, date_gen]
             data.append(newrow)
 
         if next_page:
             browser.get(next_page)
         else:
+            print("No more pages")
             break
 
     browser.quit()
@@ -134,19 +130,33 @@ def search(query):
 
 
 def main():
+    start = time.perf_counter()
     print(strftime("Starting at %H:%M:%S", localtime()))
     if len(sys.argv) < 2:
-        destinations = ['singapore', 'Hong Kong']
+        destinations = ['Osaka', 'Bali', 'Manila', 'malaysia']
     else:
         destinations = sys.argv[1:]
+
+    try:
+        savefolder = "data"
+        os.mkdir(savefolder)
+    except Exception as e:
+        pass
+
     for place in destinations:
         place = place.capitalize()
-        # file_save_path = os.path.join(os.getcwd(), "data\\", place, "_data.csv")
-        filename = place + "_data.csv"
+        # os.chdir(savefolder)
+        os.path.join(os.getcwd(), "data")
+        filepath = os.path.join(os.path.abspath(savefolder), place + "_data.csv")
+        print("filepath =", filepath)
         print("Beginning search in", place)
         df = search(place)
-        df.to_csv(path_or_buf=filename, index_label="Index", columns=column_titles)
-        print(strftime("Finished at %H:%M:%S", localtime()))
+        df.to_csv(path_or_buf=filepath, index_label="Index", columns=column_titles)
+        print(strftime("\nFinished at %H:%M:%S\n", localtime()))
+        print(df.head())
+    finish = time.perf_counter()
+    execution_time = (finish - start) / 60
+    print("Program took {:.2f} minutes to complete".format(execution_time))
 
 
 if __name__ == '__main__':
