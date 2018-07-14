@@ -1,4 +1,6 @@
 import sys
+import os
+from datetime import datetime
 import pandas as pd
 import time
 from selenium import webdriver
@@ -132,6 +134,7 @@ def search(query):
 
 
 def main():
+    print(datetime.hour + ":" + datetime.minute + datetime.second)
     if len(sys.argv) < 2:
         destinations = ['cambodia', 'japan']
     else:
@@ -143,6 +146,7 @@ def main():
         df = search(place)
         print(df.head())
         df.to_csv(path_or_buf=filename, index_label="Index", columns=column_titles)
+    print("Finished: " + datetime.hour + ":" + datetime.minute + datetime.second)
 
 
 if __name__ == '__main__':
