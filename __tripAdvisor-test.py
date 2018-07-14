@@ -3,6 +3,7 @@ import os
 from datetime import datetime
 import pandas as pd
 import time
+from time import localtime, strftime
 from selenium import webdriver
 # from selenium.webdriver.chrome.options import Options
 # from selenium.webdriver.common.keys import Keys
@@ -45,7 +46,7 @@ def search(query):
     except TimeoutException:
         time.sleep(1)
 
-    # Visit all pages of results until "Next" button dissappears
+    # Visit all pages
     page_num = 0
     pages_to_scrape = 4
     data = []
@@ -125,7 +126,6 @@ def search(query):
         if next_page:
             browser.get(next_page)
         else:
-            print("No more pages")
             break
 
     browser.quit()
@@ -134,19 +134,19 @@ def search(query):
 
 
 def main():
-    print(datetime.hour + ":" + datetime.minute + datetime.second)
+    print(strftime("Starting at %H:%M:%S", localtime()))
     if len(sys.argv) < 2:
         destinations = ['cambodia', 'japan']
     else:
         destinations = sys.argv[1:]
     for place in destinations:
         place = place.capitalize()
-        filename = place + '_data.csv'
+        file_save_path = os.path.join(os.getcwd(), "data\\", place, "_data.csv")
+        filename = place + "_data.csv"
         print("Beginning search in", place)
         df = search(place)
-        print(df.head())
         df.to_csv(path_or_buf=filename, index_label="Index", columns=column_titles)
-    print("Finished: " + datetime.hour + ":" + datetime.minute + datetime.second)
+        print(strftime("Finished at %H:%M:%S", localtime()))
 
 
 if __name__ == '__main__':
