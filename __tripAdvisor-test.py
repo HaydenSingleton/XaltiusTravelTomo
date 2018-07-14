@@ -48,7 +48,7 @@ def search(query):
 
     # Visit all pages
     page_num = 0
-    pages_to_scrape = 4
+    pages_to_scrape = 20
     data = []
 
     while page_num < pages_to_scrape:
@@ -136,12 +136,12 @@ def search(query):
 def main():
     print(strftime("Starting at %H:%M:%S", localtime()))
     if len(sys.argv) < 2:
-        destinations = ['cambodia', 'japan']
+        destinations = ['singapore', 'Hong Kong']
     else:
         destinations = sys.argv[1:]
     for place in destinations:
         place = place.capitalize()
-        file_save_path = os.path.join(os.getcwd(), "data\\", place, "_data.csv")
+        # file_save_path = os.path.join(os.getcwd(), "data\\", place, "_data.csv")
         filename = place + "_data.csv"
         print("Beginning search in", place)
         df = search(place)
