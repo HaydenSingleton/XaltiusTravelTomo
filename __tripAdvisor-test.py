@@ -48,7 +48,10 @@ def search(query):
 
     # Visit all pages
     page_num = 0
-    pages_to_scrape = 20
+    total_pages = browser.find_element_by_xpath("""//*[@id="FILTERED_LIST"]/div[34]/div/div/div/a[6]""")
+    pages_to_scrape = int(total_pages.text)
+    pages_to_scrape //= 2
+
     data = []
     date_gen = datetime.today().replace(microsecond=0)
 
@@ -80,9 +83,9 @@ def search(query):
             except Exception:
                 title = None
             try:
-                reviews = soup.find('span', class_='reviews_header_count').text.strip('()')
+                review_count = soup.find('span', class_='reviews_header_count').text.strip('()')
             except Exception:
-                reviews = None
+                review_count = None
             try:
                 rating = soup.find("span", class_="overallRating").text
             except Exception:
@@ -111,11 +114,18 @@ def search(query):
                 country = soup.find("span", class_="country-name").text
             except Exception:
                 country = None
+            try:
+
+                user_review_list = soup.find_all("div", class_="ppr_rup ppr_priv_location_reviews_list_resp")
+                user_reviews = {ur.find("div", class_="info_text").div.text: ur.find("p", class_="partial_entry").text for ur in user_review_list}
+            except Exception as e:
+                print(e)
+                user_reviews = None
 
             if address is None:
                 address = exaddress
 
-            newrow = [title, rating, reviews, phone, address, local, country, date_gen]
+            newrow = [title, rating, review_count, user_reviews, phone, address, local, country, date_gen]
             data.append(newrow)
 
         if next_page:
@@ -133,7 +143,7 @@ def main():
     start = time.perf_counter()
     print(strftime("Starting at %H:%M:%S", localtime()))
     if len(sys.argv) < 2:
-        destinations = ['Osaka', 'Bali', 'Manila', 'malaysia']
+        destinations = ['Bali', 'Manila', 'malaysia']
     else:
         destinations = sys.argv[1:]
 
@@ -143,12 +153,15 @@ def main():
     except Exception as e:
         pass
 
+    print("Searching:", end="")
+    [print(" " + p.capitalize(), end="") for p in destinations]
+    print()
+
     for place in destinations:
         place = place.capitalize()
         # os.chdir(savefolder)
         os.path.join(os.getcwd(), "data")
         filepath = os.path.join(os.path.abspath(savefolder), place + "_data.csv")
-        print("filepath =", filepath)
         print("Beginning search in", place)
         df = search(place)
         df.to_csv(path_or_buf=filepath, index_label="Index", columns=column_titles)
