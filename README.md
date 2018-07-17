@@ -16,6 +16,9 @@ Data includes each attraction's Title, Rating, Review Count, Phone Number, Addre
  A decimal score up to 5.0
 ## Review Count
  The number of user reviews, an integer
+## User Reviews (WIP)
+ A collection of the first 10 user reviews stored as a dictionary
+ with each username as a key and each paragraph as a value
 ## Phone Number
  The phone number and country code, a string
 ## Address
@@ -24,13 +27,12 @@ Data includes each attraction's Title, Rating, Review Count, Phone Number, Addre
  The locality (usually zip code and province) as a string
 ## Country
  The country where the location/city is as a string
-## Opening Hours (WIP)
- Times each attraction is open as a list of tuples for each combination
- of opening hours for every day of the week
-## Estimated Cost (WIP)
- A string of cost in the displayed currency
-## Estimated Time of Visit (WIP)
+## Date Generated
+ The date the list was generated as a datetime object with microseconds scrubbed to 0
+## Keywords
+ Most common tags/keywords used in the user review section, stored as dictionary with
+ each keyword as the key and the frequency of its occurance as the value
+## Estimated Duration of Visit (WIP)
  A string containing the estimated duration given by Trip Advisor
-## Reviews (WIP)
- A collection of user reviews as a filename of a csv file containing all reviews, scores,
- dates, and titles for an attraction, all stored in a local directory named after the city
+## Estimated Cost
+ A string of cost in the displayed (local) currency
