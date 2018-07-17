@@ -16,7 +16,7 @@ from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup
 
 # Global variables
-column_titles = ['Title', 'Rating', 'Review Count', 'User Reviews', 'Phone Number', 'Address', 'Locality', 'Country', 'Date Generated']  # , 'Opening Hours']
+column_titles = ['Title', 'Rating', 'Review Count', 'User Reviews', 'Phone Number', 'Address', 'Locality', 'Country', 'Date Generated', 'Description', 'Suggested Duration']  # , 'Opening Hours']
 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36'}
 
 
@@ -25,6 +25,7 @@ def search(query):
     chrome_options = Options()
     # chrome_options.add_argument("--enable-fast-unload")
     browser = webdriver.Chrome(chrome_options=chrome_options)
+    wait = WebDriverWait(browser, 5)
     # Navigate to trip tripadvisor
     main_url = 'https://www.tripadvisor.com/Attractions'
     site_url = "https://www.tripadvisor.com"
@@ -32,7 +33,6 @@ def search(query):
     browser.get(main_url)
 
     # Search for the place provided and click on the "Things to Do" searchbar
-    wait = WebDriverWait(browser, 1)
     wait.until(EC.presence_of_element_located((By.CLASS_NAME, "typeahead_input")))
     searchbar = browser.find_element_by_class_name("typeahead_input")
     searchbar.send_keys(query)
@@ -40,11 +40,7 @@ def search(query):
     browser.find_element_by_id("SUBMIT_THINGS_TO_DO").click()
 
     # Wait for page load
-    try:
-        wait = WebDriverWait(browser, 1)
-        wait.until(EC.presence_of_element_located((By.CLASS_NAME, "listing_title")))
-    except TimeoutException:
-        time.sleep(1)
+    wait.until(EC.presence_of_element_located((By.CLASS_NAME, "listing_title")))
 
     # Visit all pages
     page_num = 0
@@ -118,18 +114,25 @@ def search(query):
             except Exception:
                 country = None
             try:
-
                 user_review_list = soup.find_all("div", class_="ppr_rup ppr_priv_location_reviews_list_resp")
                 print(f"On page {i} we found {len(user_review_list)} reviews of {title}", end="")
                 user_reviews = {ur.find("div", class_="info_text").div.text: ur.find("p", class_="partial_entry").text for ur in user_review_list}
             except Exception as e:
                 print(e)
                 user_reviews = None
+            try:
+                description = soup.find("div", class_="AttractionDetailAboutCard__section--3ZGme").text
+            except Exception:
+                description = None
+            try:
+                rec_duration = description = soup.find("div", class_="AboutSection__sectionWrapper--1DEp2").text
+            except Exception:
+                rec_duration = None
 
             if address is None:
                 address = exaddress
 
-            newrow = [title, rating, review_count, user_reviews, phone, address, local, country, date_gen]
+            newrow = [title, rating, review_count, user_reviews, phone, address, local, country, date_gen, description, rec_duration]
             data.append(newrow)
 
         if next_page:
@@ -147,7 +150,7 @@ def main():
     start = time.perf_counter()
     print(strftime("Starting at %H:%M:%S", localtime()))
     if len(sys.argv) < 2:
-        destinations = ['Bali', 'Manila', 'malaysia']
+        destinations = ['malaysia']
     else:
         destinations = sys.argv[1:]
 
@@ -163,7 +166,6 @@ def main():
 
     for place in destinations:
         place = place.capitalize()
-        # os.chdir(savefolder)
         os.path.join(os.getcwd(), "data")
         filepath = os.path.join(os.path.abspath(savefolder), place + "_data.csv")
         print("Beginning search in", place)
