@@ -10,20 +10,19 @@ from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
-# from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.chrome.options import Options
 # from pandas import DataFrame
 from bs4 import BeautifulSoup
 
 # Global variables
-column_titles = ['Title', 'Rating', 'Review Count', 'User Reviews', 'Phone Number', 'Address', 'Locality', 'Country', 'Date Generated', 'Description', 'Duration', 'Est. PricePP']  # , 'Opening Hours']
+column_titles = ['Title', 'Rating', 'Review Count', 'User Reviews', 'Phone Number', 'Address', 'Locality', 'Country', 'Date Generated', 'Keywords', 'Duration', 'Price']
 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36'}
 
 
 def search(query):
     # Set up browser
     chrome_options = Options()
-    # chrome_options.add_argument("--enable-fast-unload")
+    chrome_options.add_argument('--log-level=3')
     browser = webdriver.Chrome(chrome_options=chrome_options)
     wait = WebDriverWait(browser, 5)
     # Navigate to trip tripadvisor
@@ -118,15 +117,14 @@ def search(query):
                 country = None
             try:
                 review_containers = soup.find_all("div", class_="review-container")
-                print(f"On page {i} we found {len(review_containers)} reviews of {title}")
-                user_reviews = {ur.find("div", class_="info_text").div.text: ur.find("p", class_="partial_entry").text for ur in review_containers}
-            except Exception as e:
-                print("Error getting reviews:", e)
-                user_reviews = None
-            try:
-                description = soup.find("div", class_="AttractionDetailAboutCard__section--3ZGme").text
+                user_reviews = {ur.find("div", class_="info_text").text: ur.find("p", class_="partial_entry").text for ur in review_containers}
             except Exception:
-                description = None
+                # print("Error getting reviews:", e)
+                user_reviews = None
+            # try:
+            #     description = soup.find("div", class_="AttractionDetailAboutCard__section--3ZGme").text
+            # except Exception:
+            #     description = None
             try:
                 rec_duration = soup.find("div", class_="AboutSection__textAlignWrapper--3dWW_").text
             except Exception:
@@ -135,16 +133,27 @@ def search(query):
                 price = soup.find("span", class_="fromPrice").text.rstrip('*')
             except Exception:
                 price = None
-            try:
-                keywords = soup.find("div", class_="ui_tagcloud_group").text
-                print(f"Page {i} keywords are: {keywords}")
-            except Exception:
-                keywords = None
+            # try:
+            # Make a list of the keywords words, skipping the first 'All reviews'
+            keywords_container = soup.find("div", class_="ui_tagcloud_group").text.split("\n")
+            # print("Keyword Container\n",keywords_container)
+            kwc = [w for w in keywords_container if not w is ""][1:]
+            print("\n"+"Kwc\n",kwc)
+            # key = [w.split('"')[0] for w in kwc] # Isolate each keyword
+            # value = [w.split()[1] for w in kwc]  # Isolate the frequency of each keyword
+            print("2nd element:",kwc[1])
+            keywords = {w.split('"')[1]: w.split()[-2] for w in kwc}
+            print("\n"+"keywords\n",keywords)
+            # print("\nKEYWORDS: "+keywords)
+            # keywords = {key:value}
+            # except Exception as e:
+            #     print("Error getting keywords:", e)
+            #     keywords = None
 
             if address is None:
                 address = exaddress
 
-            newrow = [title, rating, review_count, user_reviews, phone, address, local, country, date_gen, description, rec_duration, price]
+            newrow = [title, rating, review_count, user_reviews, phone, address, local, country, date_gen, keywords, rec_duration, price]
             data.append(newrow)
 
         if next_page:
@@ -168,7 +177,7 @@ def main():
     try:
         savefolder = "data"
         os.mkdir(savefolder)
-    except Exception as e:
+    except Exception:
         pass
 
     print("Searching:", end="")
