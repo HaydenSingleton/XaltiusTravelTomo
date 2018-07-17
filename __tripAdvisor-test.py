@@ -61,19 +61,18 @@ def search(query):
         attractions = soup.find_all("div", {"class": "listing_title "})
         links = [site_url + item.a['href'] for item in attractions if "Attraction_Review" in item.a['href']]
         numlinks = len(links)
-        print(f"\nFound {numlinks} links on page {page_num}/{pages_to_scrape}--", end="")
+        print(f"\nFound {numlinks} links on page {page_num}/{pages_to_scrape}--")
 
         try:
             next_page = site_url + soup.find("a", class_="next").get('href')
         except AttributeError:
             next_page = None
 
-        numlinks //= 10
-        print(f"\nSearching only {numlinks} tho...")
+        # numlinks //= 10 # For testing
+        # print(f"\nSearching only {numlinks}...")
 
         for i in range(numlinks):
-            print()
-            # print(str(i) + ".", end="", flush=True)
+            print(str(i) + ".", end="", flush=True)
             # Visit each page
             browser.get(links[i])
 
@@ -133,28 +132,20 @@ def search(query):
                 price = soup.find("span", class_="fromPrice").text.rstrip('*')
             except Exception:
                 price = None
-            # try:
-            # Make a list of the keywords words, skipping the first 'All reviews'
-            keywords_container = soup.find("div", class_="ui_tagcloud_group").text.split("\n")
-            # print("Keyword Container\n",keywords_container)
-            kwc = [w for w in keywords_container if not w is ""][1:]
-            print("\n"+"Kwc\n",kwc)
-            # key = [w.split('"')[0] for w in kwc] # Isolate each keyword
-            # value = [w.split()[1] for w in kwc]  # Isolate the frequency of each keyword
-            print("2nd element:",kwc[1])
-            keywords = {w.split('"')[1]: w.split()[-2] for w in kwc}
-            print("\n"+"keywords\n",keywords)
-            # print("\nKEYWORDS: "+keywords)
-            # keywords = {key:value}
-            # except Exception as e:
-            #     print("Error getting keywords:", e)
-            #     keywords = None
+            try:
+                keywords_container = soup.find("div", class_="ui_tagcloud_group").text.split("\n")  # Convert to a list
+                kwc = [w for w in keywords_container if w is not ""][1:]  # Remove first tag "all reviews" and empty strings
+                keywords = {w.split('"')[1]: w.split()[-2] for w in kwc}  # Seperate tag and count and put into dict
+            except Exception:
+                keywords = None
 
             if address is None:
                 address = exaddress
 
             newrow = [title, rating, review_count, user_reviews, phone, address, local, country, date_gen, keywords, rec_duration, price]
             data.append(newrow)
+
+        print()
 
         if next_page:
             browser.get(next_page)
