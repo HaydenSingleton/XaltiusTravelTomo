@@ -11,20 +11,20 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.chrome.options import Options
 # from pandas import DataFrame
 from bs4 import BeautifulSoup
 
 # Global variables
-column_titles = ['Title', 'Rating', 'Review Count', 'Phone Number', 'Address', 'Locality', 'Country', 'Date Generated']  # , 'Opening Hours']
+column_titles = ['Title', 'Rating', 'Review Count', 'User Reviews', 'Phone Number', 'Address', 'Locality', 'Country', 'Date Generated']  # , 'Opening Hours']
 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36'}
 
 
 def search(query):
     # Set up browser
-    # chrome_options = webdriver.ChromeOptions()
+    chrome_options = Options()
     # chrome_options.add_argument("--enable-fast-unload")
-    # browser = webdriver.Chrome(chrome_options=chrome_options, port=443)
-    browser = webdriver.Chrome()
+    browser = webdriver.Chrome(chrome_options=chrome_options)
     # Navigate to trip tripadvisor
     main_url = 'https://www.tripadvisor.com/Attractions'
     site_url = "https://www.tripadvisor.com"
@@ -48,9 +48,12 @@ def search(query):
 
     # Visit all pages
     page_num = 0
-    total_pages = browser.find_element_by_xpath("""//*[@id="FILTERED_LIST"]/div[34]/div/div/div/a[6]""")
-    pages_to_scrape = int(total_pages.text)
-    pages_to_scrape //= 2
+    try:
+        total_pages = browser.find_element_by_xpath("""//*[@id="FILTERED_LIST"]/div[34]/div/div/div/a[6]""")
+        pages_to_scrape = int(total_pages.text)
+        pages_to_scrape //= 3
+    except Exception:
+        pages_to_scrape = 1
 
     data = []
     date_gen = datetime.today().replace(microsecond=0)
@@ -71,8 +74,8 @@ def search(query):
             next_page = None
 
         for i in range(numlinks):
-
-            print(str(i) + ".", end="", flush=True)
+            print()
+            # print(str(i) + ".", end="", flush=True)
             # Visit each page
             browser.get(links[i])
 
@@ -117,6 +120,7 @@ def search(query):
             try:
 
                 user_review_list = soup.find_all("div", class_="ppr_rup ppr_priv_location_reviews_list_resp")
+                print(f"On page {i} we found {len(user_review_list)} reviews of {title}", end="")
                 user_reviews = {ur.find("div", class_="info_text").div.text: ur.find("p", class_="partial_entry").text for ur in user_review_list}
             except Exception as e:
                 print(e)
