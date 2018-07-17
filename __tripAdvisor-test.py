@@ -10,13 +10,13 @@ from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
-from selenium.common.exceptions import TimeoutException
+# from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.chrome.options import Options
 # from pandas import DataFrame
 from bs4 import BeautifulSoup
 
 # Global variables
-column_titles = ['Title', 'Rating', 'Review Count', 'User Reviews', 'Phone Number', 'Address', 'Locality', 'Country', 'Date Generated', 'Description', 'Suggested Duration', 'Price']  # , 'Opening Hours']
+column_titles = ['Title', 'Rating', 'Review Count', 'User Reviews', 'Phone Number', 'Address', 'Locality', 'Country', 'Date Generated', 'Description', 'Duration', 'Est. PricePP']  # , 'Opening Hours']
 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36'}
 
 
@@ -117,11 +117,11 @@ def search(query):
             except Exception:
                 country = None
             try:
-                review_containers = soup.find_all("div", class_="reviewSelector")
-                print(f"On page {i} we found {len(review_containers)} reviews of {title}", end="")
+                review_containers = soup.find_all("div", class_="review-container")
+                print(f"On page {i} we found {len(review_containers)} reviews of {title}")
                 user_reviews = {ur.find("div", class_="info_text").div.text: ur.find("p", class_="partial_entry").text for ur in review_containers}
             except Exception as e:
-                print(e)
+                print("Error getting reviews:", e)
                 user_reviews = None
             try:
                 description = soup.find("div", class_="AttractionDetailAboutCard__section--3ZGme").text
@@ -132,9 +132,14 @@ def search(query):
             except Exception:
                 rec_duration = None
             try:
-                price = soup.find("span", class_="fromPrice").text
+                price = soup.find("span", class_="fromPrice").text.rstrip('*')
             except Exception:
                 price = None
+            try:
+                keywords = soup.find("div", class_="ui_tagcloud_group").text
+                print(f"Page {i} keywords are: {keywords}")
+            except Exception:
+                keywords = None
 
             if address is None:
                 address = exaddress
@@ -154,7 +159,6 @@ def search(query):
 
 
 def main():
-    start = time.perf_counter()
     print(strftime("Starting at %H:%M:%S", localtime()))
     if len(sys.argv) < 2:
         destinations = ['malaysia']
@@ -171,6 +175,7 @@ def main():
     [print(" " + p.capitalize(), end="") for p in destinations]
     print()
 
+    start = time.perf_counter()
     for place in destinations:
         place = place.capitalize()
         os.path.join(os.getcwd(), "data")
@@ -181,8 +186,15 @@ def main():
         print(strftime("\nFinished at %H:%M:%S\n", localtime()))
         print(df.head())
     finish = time.perf_counter()
-    execution_time = (finish - start) / 60
-    print("Program took {:.2f} minutes to complete".format(execution_time))
+    disp_program_duration(finish, start)
+
+
+def disp_program_duration(finish, start):
+    execution_time = (finish - start)
+    if execution_time >= 60:
+        print("\n" + "Searching took {:.2f} minutes to complete".format(execution_time / 60))
+    else:
+        print("\n" + "Searching took {:.1f} seconds to complete".format(execution_time))
 
 
 if __name__ == '__main__':
