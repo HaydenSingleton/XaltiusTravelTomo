@@ -61,7 +61,7 @@ def search(query):
         attractions = soup.find_all("div", {"class": "listing_title "})
         links = [site_url + item.a['href'] for item in attractions if "Attraction_Review" in item.a['href']]
         numlinks = len(links)
-        print(f"\nFound {numlinks} links on page {page_num}/{pages_to_scrape}--")
+        print(f"\nFound {numlinks} links on page ({page_num}/{pages_to_scrape}):")
 
         try:
             next_page = site_url + soup.find("a", class_="next").get('href')
@@ -187,6 +187,7 @@ def main():
         print(df.head())
     finish = time.perf_counter()
     disp_program_duration(finish, start)
+    disp_program_duration(120,30)
 
 
 def disp_program_duration(finish, start):
