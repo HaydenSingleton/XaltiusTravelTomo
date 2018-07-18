@@ -11,7 +11,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
-# from pandas import DataFrame
+from pandas import DataFrame
 from bs4 import BeautifulSoup
 
 # Global variables
@@ -187,7 +187,7 @@ def main():
         print(df.head())
     finish = time.perf_counter()
     disp_program_duration(finish, start)
-    disp_program_duration(120,30)
+    disp_program_duration(120,60)
 
 
 def disp_program_duration(finish, start):
