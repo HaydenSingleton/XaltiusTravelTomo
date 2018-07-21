@@ -1,23 +1,26 @@
-import sys
 import os
+import sys
+import time
 from datetime import datetime
+from time import localtime, strftime
+
 import pandas as pd
 # from pandas import DataFrame
-import time
-from time import localtime, strftime
+import requests
+from bs4 import BeautifulSoup
+
 from selenium import webdriver
-from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
+from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.common.by import By
 # from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.by import By
-from selenium.common.exceptions import TimeoutException
-from bs4 import BeautifulSoup
+from selenium.webdriver.support.ui import WebDriverWait
 
 # Global variables
 column_titles = ['Title', 'Rating', 'Review Count', 'User Reviews', 'Phone Number', 'Address', 'Locality', 'Country', 'Date Generated', 'Keywords', 'Duration', 'Price']
-# headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36'}
+headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36'}
 driver_path = os.path.normpath("C:\\Users\\Hayden\\Anaconda3\\selenium\\webdriver")
 
 
@@ -82,8 +85,7 @@ def search(query):
         page_num += 1
 
         # Find all search results
-        allresults = driver.find_element_by_class_name("all-results")
-        results = allresults.find_elements_by_class_name("result")
+        results = driver.find_elements_by_class_name("result")
         links = ["https://www.tripadvisor.com" + r.find_element_by_class_name("result_wrap").get_attribute("onclick").split(",")[6].strip().strip("'") for r in results]
         numlinks = len(links)
         print(f"\nFound {numlinks} links on page {page_num}/{pages_to_scrape}-")
@@ -99,10 +101,11 @@ def search(query):
         for i in range(numlinks):
             print(str(i) + ".", end="", flush=True)
             # Visit each page
-            driver.get(links[i])
+            # driver.get(links[i])
+            # soup = BeautifulSoup(driver.page_source, 'html5lib')
+            soup = BeautifulSoup(requests.get(links[i], headers=headers).text, 'html5lib')
 
             # Scrape data
-            soup = BeautifulSoup(driver.page_source, 'html5lib')
             try:
                 title = soup.find('h1', id='HEADING').text
             except Exception:
@@ -173,7 +176,14 @@ def search(query):
         print()
 
         if next_page:
-            driver.get(next_page)
+            try:
+                driver.get(next_page)
+            except WindowsError:
+                time.sleep(2)
+                try:
+                    driver.get(next_page)
+                except WindowsError:
+                    break
         else:
             print("No more pages")
             break
@@ -186,19 +196,19 @@ def search(query):
 def main():
     print(strftime("Starting at %H:%M:%S", localtime()))
     if len(sys.argv) < 2:
-        destinations = ['malaysia']
+        input_list = ['singapore', 'malay']
     else:
-        destinations = sys.argv[1:]
+        input_list = sys.argv[1:]
 
+    savefolder = "data"
     try:
-        savefolder = "data"
         os.mkdir(savefolder)
     except Exception:
         pass
 
-    print("Searching:", end="")
-    [print(" " + p.capitalize(), end="") for p in destinations]
-    print()
+    destinations = [s.capitalize() for s in input_list]
+    print("Searching: " + " ".join(destinations))
+
 
     start = time.perf_counter()
     for place in destinations:
@@ -206,19 +216,9 @@ def main():
         # os.path.join(os.getcwd(), "data")
         filepath = os.path.join(os.path.abspath(savefolder), place + "_data.csv")
         df = search(place)
-        try:
-            df.to_csv(path_or_buf=filepath, index_label="Index", columns=column_titles)
-        except PermissionError:
-            for i in range(9):
-                try:
-                    filepath = filepath[:-4] + str(i) + filepath[-4:]
-                    break
-                except PermissionError:
-                    pass
-            else:
-                print("File could not be saved")
+        df.to_csv(path_or_buf=filepath, index_label="Index", columns=column_titles)
         print(strftime("\nFinished at %H:%M:%S\n", localtime()))
-        print(df.head())
+        print(df.head(2))
     finish = time.perf_counter()
     disp_program_duration(finish, start)
 
