@@ -2,69 +2,94 @@ import sys
 import os
 from datetime import datetime
 import pandas as pd
+# from pandas import DataFrame
 import time
 from time import localtime, strftime
 from selenium import webdriver
+from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
 # from selenium.webdriver.chrome.options import Options
-# from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.options import Options
-from pandas import DataFrame
+from selenium.common.exceptions import TimeoutException
 from bs4 import BeautifulSoup
 
 # Global variables
 column_titles = ['Title', 'Rating', 'Review Count', 'User Reviews', 'Phone Number', 'Address', 'Locality', 'Country', 'Date Generated', 'Keywords', 'Duration', 'Price']
 # headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36'}
+driver_path = os.path.normpath("C:\\Users\\Hayden\\Anaconda3\\selenium\\webdriver")
 
 
 def search(query):
+    print("Beginning search in", query)
+    data = []
     # Set up browser
-    chrome_options = Options()
-    chrome_options.add_argument('--log-level=3')
-    browser = webdriver.Chrome(chrome_options=chrome_options)
-    wait = WebDriverWait(browser, 5)
+    # chrome_options = Options()
+    # chrome_options.add_argument('--log-level=3')
+    # driver = webdriver.Chrome(chrome_options=chrome_options)
+
+    # # os.environ['MOZ_HEADLESS'] = '1'
+    binary = FirefoxBinary('C:\\Program Files\\Mozilla Firefox\\firefox.exe', log_file=sys.stdout)
+    driver = webdriver.Firefox(firefox_binary=binary)
+
+    wait = WebDriverWait(driver, 5)
     # Navigate to trip tripadvisor
-    main_url = 'https://www.tripadvisor.com/Attractions'
-    site_url = "https://www.tripadvisor.com"
-    # Should redirect to the correct local domain as needed (ex- .sg) AFAIK
-    browser.get(main_url)
+    main_url = "https://www.tripadvisor.com/"  # Should redirect to the correct local domain as needed (ex- .com.sg) AFAIK
+    driver.get(main_url)
 
     # Search for the place provided and click on the "Things to Do" searchbar
-    wait.until(EC.presence_of_element_located((By.CLASS_NAME, "typeahead_input")))
-    searchbar = browser.find_element_by_class_name("typeahead_input")
-    searchbar.send_keys(query)
-    # searchbar.send_keys(Keys.RETURN)
-    browser.find_element_by_id("SUBMIT_THINGS_TO_DO").click()
+    try:
+        wait.until(EC.presence_of_element_located((By.CLASS_NAME, "mag_glass_parent")))
+        searchicon = driver.find_element_by_class_name("mag_glass_parent")
+        searchicon.click()
+        wait.until(EC.presence_of_element_located((By.ID, "mainSearch")))
+        searchbar = driver.find_element_by_id("mainSearch")
+        wait.until(EC.visibility_of(searchbar))
+        searchbar.click()
+        searchbar.send_keys(query)
+        searchbar.send_keys(Keys.RETURN)
+        search_button = driver.find_element_by_id("SEARCH_BUTTON")
+        search_button.click()
+    except TimeoutException as e:
+        print("Website not responding")
+        driver.quit()
+        print(e)
+        exit(1)
 
-    # Wait for page load
-    wait.until(EC.presence_of_element_located((By.CLASS_NAME, "listing_title")))
+    # Wait for website to load search results
+    try:
+        wait.until(EC.presence_of_element_located((By.ID, "HEADING")))
+    except TimeoutException:
+        print("Failed to load page")
+        exit(1)
 
     # Visit all pages
     page_num = 0
     try:
-        total_pages = browser.find_element_by_xpath("""//*[@id="FILTERED_LIST"]/div[34]/div/div/div/a[6]""")
+        total_pages = driver.find_element_by_xpath("""/html/body/div[4]/div[3]/div/div[2]/div/div/div/div[3]/div/div/a[7]""")
+        print("found", str(total_pages.text), "pages of results.")
         pages_to_scrape = int(total_pages.text)
         pages_to_scrape //= 3
     except Exception:
         pages_to_scrape = 1
+        print("found", str(pages_to_scrape), "pages of results.")
+    # pages_to_scrape = 10
 
-    data = []
     date_gen = datetime.today().replace(microsecond=0)
 
     while page_num < pages_to_scrape:
         page_num += 1
 
-        # Get each attraction
-        soup = BeautifulSoup(browser.page_source, "html5lib")
-        attractions = soup.find_all("div", {"class": "listing_title "})
-        links = [site_url + item.a['href'] for item in attractions if "Attraction_Review" in item.a['href']]
+        # Find all search results
+        allresults = driver.find_element_by_class_name("all-results")
+        results = allresults.find_elements_by_class_name("result")
+        links = ["https://www.tripadvisor.com" + r.find_element_by_class_name("result_wrap").get_attribute("onclick").split(",")[6].strip().strip("'") for r in results]
         numlinks = len(links)
-        print(f"\nFound {numlinks} links on page ({page_num}/{pages_to_scrape}):")
+        print(f"\nFound {numlinks} links on page {page_num}/{pages_to_scrape}-")
 
         try:
-            next_page = site_url + soup.find("a", class_="next").get('href')
+            next_page = main_url + BeautifulSoup(driver.page_source, 'html5lib').find("a", class_="next").get('href')
         except AttributeError:
             next_page = None
 
@@ -74,10 +99,10 @@ def search(query):
         for i in range(numlinks):
             print(str(i) + ".", end="", flush=True)
             # Visit each page
-            browser.get(links[i])
+            driver.get(links[i])
 
             # Scrape data
-            soup = BeautifulSoup(browser.page_source, 'html5lib')
+            soup = BeautifulSoup(driver.page_source, 'html5lib')
             try:
                 title = soup.find('h1', id='HEADING').text
             except Exception:
@@ -118,12 +143,11 @@ def search(query):
                 review_containers = soup.find_all("div", class_="review-container")
                 user_reviews = {ur.find("div", class_="info_text").text: ur.find("p", class_="partial_entry").text for ur in review_containers}
             except Exception:
-                # print("Error getting reviews:", e)
                 user_reviews = None
-            # try:
-            #     description = soup.find("div", class_="AttractionDetailAboutCard__section--3ZGme").text
-            # except Exception:
-            #     description = None
+            try:
+                description = soup.find("div", class_="AttractionDetailAboutCard__section--3ZGme").text
+            except Exception:
+                description = None
             try:
                 rec_duration = soup.find("div", class_="AboutSection__textAlignWrapper--3dWW_").text
             except Exception:
@@ -142,18 +166,19 @@ def search(query):
             if address is None:
                 address = exaddress
 
+            description = description
             newrow = [title, rating, review_count, user_reviews, phone, address, local, country, date_gen, keywords, rec_duration, price]
             data.append(newrow)
 
         print()
 
         if next_page:
-            browser.get(next_page)
+            driver.get(next_page)
         else:
             print("No more pages")
             break
 
-    browser.quit()
+    driver.quit()
     final_df = pd.DataFrame(data, columns=list(column_titles))
     return final_df
 
@@ -178,16 +203,24 @@ def main():
     start = time.perf_counter()
     for place in destinations:
         place = place.capitalize()
-        os.path.join(os.getcwd(), "data")
+        # os.path.join(os.getcwd(), "data")
         filepath = os.path.join(os.path.abspath(savefolder), place + "_data.csv")
-        print("Beginning search in", place)
         df = search(place)
-        df.to_csv(path_or_buf=filepath, index_label="Index", columns=column_titles)
+        try:
+            df.to_csv(path_or_buf=filepath, index_label="Index", columns=column_titles)
+        except PermissionError:
+            for i in range(9):
+                try:
+                    filepath = filepath[:-4] + str(i) + filepath[-4:]
+                    break
+                except PermissionError:
+                    pass
+            else:
+                print("File could not be saved")
         print(strftime("\nFinished at %H:%M:%S\n", localtime()))
         print(df.head())
     finish = time.perf_counter()
     disp_program_duration(finish, start)
-    disp_program_duration(120,60)
 
 
 def disp_program_duration(finish, start):
