@@ -8,7 +8,9 @@ stored in a csv file (wip) and to be cleaned using pandas.
 
 Data includes each attraction's Title, Rating, Review Count, Phone Number, Address, Locality, Country, Opening Hours
 
-# Data Heirarchy (Each is a field in the csv)
+# Data Heirarchy
+
+### Main Table
 
 ## Title
  The title of each attraction as a string
@@ -16,17 +18,16 @@ Data includes each attraction's Title, Rating, Review Count, Phone Number, Addre
  A decimal score up to 5.0
 ## Review Count
  The number of user reviews, an integer
-## User Reviews (WIP)
- A collection of the first 10 user reviews stored as a dictionary
- with each username as a key and each paragraph as a value
+## User Review Foreign Key(WIP)
+ Links to the user review table
 ## Phone Number
  The phone number and country code, a string
 ## Address
  The street address if it exists as a string
 ## Locality
  The locality (usually zip code and province) as a string
-## Country
- The country where the location/city is as a string
+## Country Foreign Key
+ Links to the country table
 ## Date Generated
  The date the list was generated as a datetime object with microseconds scrubbed to 0
 ## Keywords
@@ -36,3 +37,9 @@ Data includes each attraction's Title, Rating, Review Count, Phone Number, Addre
  A string containing the estimated duration given by Trip Advisor
 ## Estimated Cost
  A string of cost in the displayed (local) currency
+
+### User Review Table (WIP)
+ Contains user reviews, usernames, ratings, dates, and user locations
+
+### Country Table (WIP)
+ Contains info such as population, GDP, currency, pop. density, demographics
