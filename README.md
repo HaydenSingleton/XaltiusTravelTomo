@@ -18,16 +18,12 @@ Data includes each attraction's Title, Rating, Review Count, Phone Number, Addre
  A decimal score up to 5.0
 ## Review Count
  The number of user reviews, an integer
-## User Review Foreign Key(WIP)
- Links to the user review table
 ## Phone Number
  The phone number and country code, a string
 ## Address
  The street address if it exists as a string
 ## Locality
  The locality (usually zip code and province) as a string
-## Country Foreign Key
- Links to the country table
 ## Date Generated
  The date the list was generated as a datetime object with microseconds scrubbed to 0
 ## Keywords
