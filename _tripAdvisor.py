@@ -22,7 +22,6 @@ from selenium.webdriver.support.ui import WebDriverWait
 column_titles = ['Title', 'Rating', 'Review Count', 'User Reviews', 'Phone Number', 'Address', 'Locality', 'Country', 'Keywords', 'Duration', 'Price', 'Date Generated']
 # driver_path = os.path.normpath("C:\\Users\\Hayden\\Anaconda3\\selenium\\webdriver")
 
-
 def main():
     print(strftime("Starting at %H:%M:%S", localtime()))
 
