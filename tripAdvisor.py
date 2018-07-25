@@ -10,7 +10,7 @@ import requests
 from bs4 import BeautifulSoup
 
 from selenium import webdriver
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import TimeoutException, ElementClickInterceptedException, StaleElementReferenceException
 from selenium.webdriver.common.by import By
 # from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.keys import Keys
@@ -79,11 +79,18 @@ def search(query):
         searchbar.click()
         searchbar.send_keys(query)
         searchbar.send_keys(Keys.RETURN)
-        search_button = driver.find_element_by_id("SEARCH_BUTTON")
-        if search_button.is_displayed():
-            search_button.click()
-        else:
-            driver.find_element_by_class_name("result-title").click()
+        try:
+            search_button = driver.find_element_by_id("SEARCH_BUTTON")
+            if search_button.is_displayed():
+                try:
+                    search_button.click()
+                except ElementClickInterceptedException:
+                    time.sleep(1)
+                    search_button.click()
+            else:
+                driver.find_element_by_class_name("result-title").click()
+        except StaleElementReferenceException:
+            pass
 
     except Exception as e:
         driver.quit()
@@ -130,8 +137,8 @@ def search(query):
 
         try:
             next_page = driver.page_source[:-1] + str(30*page+1)
-            print(next_page)
             try:
+                print(next_page)
                 driver.get(next_page)
             except Exception as e:
                 print(e)
