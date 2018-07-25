@@ -19,10 +19,13 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
 # Global variables
-column_titles = ['Title', 'Rating', 'Review Count', 'User Reviews', 'Phone Number', 'Address', 'Locality', 'Country', 'Keywords', 'Duration', 'Price', 'Date Generated']
+column_titles = ['Title', 'Rating', 'Review Count', 'User Reviews', \
+                'Phone Number', 'Address', 'Locality', 'Country',   \
+                'Keywords', 'Duration', 'Price', 'Type', 'Date Generated']
+headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36'}
 # driver_path = os.path.normpath("C:\\Users\\Hayden\\Anaconda3\\selenium\\webdriver")
 
-def main():
+def script():
     print(strftime("Starting at %H:%M:%S", localtime()))
 
     if len(sys.argv) < 2:
@@ -30,7 +33,7 @@ def main():
     else:
         input_list = sys.argv[1:]
     queries = [s.capitalize() for s in input_list]
-    print("Searching: " + ", ".join(queries), end="")
+    print("Searching: [" + ", ".join(queries), end="]")
 
     try:
         os.mkdir("data")
@@ -40,7 +43,11 @@ def main():
     for place in queries:
         filepath = os.path.join(os.path.abspath("data"), place + "_data.csv")
         df = search(place)
-        df.to_csv(path_or_buf=filepath, index_label="Index")  # , columns=column_titles)
+        try:
+            df.to_csv(path_or_buf=filepath, index_label="Index")  # , columns=column_titles)
+        except PermissionError:
+            filepath = filepath[:-4] + "-2" + filepath[-4:]
+            df.to_csv(path_or_buf=filepath, index_label="Index")
         print(strftime("\nFinished at %H:%M:%S\n", localtime()))
         print(df.head())
 
@@ -78,9 +85,10 @@ def search(query):
         else:
             driver.find_element_by_class_name("result-title").click()
 
-    except TimeoutException:
+    except Exception as e:
         driver.quit()
-        raise TimeoutException("Website not responding")
+        print("Problem -",e)
+        raise
 
     # Wait for website to load search results
     wait.until(EC.presence_of_element_located((By.ID, "HEADING")))
@@ -90,41 +98,47 @@ def search(query):
         total_pages = driver.find_element_by_xpath("""/html/body/div[4]/div[3]/div[1]/div[2]/div/div/div/div/div[3]/div/div/a[7]""")
         max_pages = int(total_pages.text)
         # max_pages //= 3
+        print("Found", str(max_pages), "pages of results.", end="")
     except Exception:
-        max_pages = 1
+        print("Can't tell how many pages there are", end="")
+        max_pages = 30
     # max_pages = 10
-    print("found", str(max_pages), "pages of results.")
     driver.minimize_window()
-    date_gen = datetime.today().replace(microsecond=0, second=0)
-    data = []
 
-    for page in range(max_pages):
+    date_gen = datetime.today().replace(microsecond=0)
+    data = []
+    for page in range(max_pages+1):
         # Find all search results
         results = driver.find_elements_by_class_name("result")
-        links = ["https://www.tripadvisor.com" + r.find_element_by_class_name("result_wrap").get_attribute("onclick").split(",")[6].strip().strip("'") for r in results]
-        numlinks = len(links)
-        print(f"\nFound {numlinks} links on page {page}/{max_pages}-")
-
-        # numlinks //= 10 # For testing
-        # print(f"\nSearching only {numlinks}...")
-
-        for url in links:
+        results.__delitem__(0)
+        partials = [r.find_element_by_class_name("result_wrap").get_attribute("onclick").split(",")[6].strip().strip("'") for r in results]
+        links = ["https://www.tripadvisor.com"+p  for p in partials]
+        types = [t[1:].split('_')[0] for t in partials]
+        print(f"\nFound {len(links)} links on page {page+1}/{max_pages}-")
+        for index, url in enumerate(links):
+            if index > 2:
+                continue
             try:
                 newrow = scrape_article(url)
             except Exception as e:
                 driver.quit()
-                raise e
+                print(e)
+                raise
+            newrow.append(types[index])
             newrow.append(date_gen)
             data.append(newrow)
 
         try:
-            next_page = main_url + BeautifulSoup(driver.page_source, 'html5lib').find("a", class_="next").get('href')
+            next_page = driver.page_source[:-1] + str(30*page+1)
+            print(next_page)
             try:
                 driver.get(next_page)
-            except WindowsError:
+            except Exception as e:
+                print(e)
                 time.sleep(2)
                 driver.get(next_page)
-        except:
+        except Exception as e:
+            print("\nFailed to go past page {}/{} :".format(page+1, max_pages), e)
             break
 
     driver.quit()
@@ -135,7 +149,7 @@ def search(query):
 def scrape_article(url):
     print(".", end="", flush=True)
     # Get BS opbject for the article
-    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36'}
+    # headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36'}
     soup = BeautifulSoup(requests.get(url, headers=headers).text, 'html5lib')
 
     # Scrape data, filling missing values with None
@@ -210,6 +224,7 @@ def scrape_article(url):
     row = [title, rating, review_count, user_reviews, phone, address, local, country, keywords, rec_duration, price]
     return row
 
-
+def main():
+    script()
 if __name__ == '__main__':
     main()
