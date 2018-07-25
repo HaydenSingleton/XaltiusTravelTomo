@@ -19,19 +19,21 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
 # Global variables
-column_titles = ['Title', 'Rating', 'Review Count', 'User Reviews', \
-                'Phone Number', 'Address', 'Locality', 'Country',   \
-                'Keywords', 'Duration', 'Price', 'Type', 'Date Generated']
+column_titles = ['Title', 'Rating', 'Review Count', 'User Reviews',
+                 'Phone Number', 'Address', 'Locality', 'Country',
+                 'Keywords', 'Duration', 'Price', 'Type', 'Date Generated']
 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36'}
 # driver_path = os.path.normpath("C:\\Users\\Hayden\\Anaconda3\\selenium\\webdriver")
+
 
 def script():
     print(strftime("Starting at %H:%M:%S", localtime()))
 
     if len(sys.argv) < 2:
-        input_list = ['singapore', 'japan']
+        input_list = ['singapore']
     else:
         input_list = sys.argv[1:]
+
     queries = [s.capitalize() for s in input_list]
     print("Searching: [" + ", ".join(queries), end="]")
 
@@ -94,7 +96,7 @@ def search(query):
 
     except Exception as e:
         driver.quit()
-        print("Problem -",e)
+        print("Problem -", e)
         raise
 
     # Wait for website to load search results
@@ -114,12 +116,12 @@ def search(query):
 
     date_gen = datetime.today().replace(microsecond=0)
     data = []
-    for page in range(max_pages+1):
+    for page in range(max_pages + 1):
         # Find all search results
         results = driver.find_elements_by_class_name("result")
         results.__delitem__(0)
         partials = [r.find_element_by_class_name("result_wrap").get_attribute("onclick").split(",")[6].strip().strip("'") for r in results]
-        links = ["https://www.tripadvisor.com"+p  for p in partials]
+        links = ["https://www.tripadvisor.com" + p for p in partials]
         types = [t[1:].split('_')[0] for t in partials]
         print(f"\nFound {len(links)} links on page {page+1}/{max_pages}-")
         for index, url in enumerate(links):
@@ -136,7 +138,7 @@ def search(query):
             data.append(newrow)
 
         try:
-            next_page = driver.page_source[:-1] + str(30*page+1)
+            next_page = driver.current_url[:-1] + str(30 * (page + 1))
             try:
                 print(next_page)
                 driver.get(next_page)
@@ -145,7 +147,8 @@ def search(query):
                 time.sleep(2)
                 driver.get(next_page)
         except Exception as e:
-            print("\nFailed to go past page {}/{} :".format(page+1, max_pages), e)
+            print("\nFailed to go past page {}/{} :".format(page + 1, max_pages))
+            print(e)          # <--------------- ## THIS MOFO RIGHT HERE
             break
 
     driver.quit()
@@ -231,7 +234,10 @@ def scrape_article(url):
     row = [title, rating, review_count, user_reviews, phone, address, local, country, keywords, rec_duration, price]
     return row
 
+
 def main():
     script()
+
+
 if __name__ == '__main__':
     main()
