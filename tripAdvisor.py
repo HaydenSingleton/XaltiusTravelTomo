@@ -10,9 +10,10 @@ import requests
 from bs4 import BeautifulSoup
 
 from selenium import webdriver
-from selenium.common.exceptions import TimeoutException, ElementClickInterceptedException, StaleElementReferenceException
+from selenium.common.exceptions import (ElementClickInterceptedException,
+                                        StaleElementReferenceException,
+                                        TimeoutException)
 from selenium.webdriver.common.by import By
-# from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
 from selenium.webdriver.support import expected_conditions as EC
