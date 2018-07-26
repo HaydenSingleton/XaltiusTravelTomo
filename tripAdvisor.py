@@ -116,32 +116,26 @@ def search(query):
     try:
         total_pages = driver.find_element_by_xpath("""/html/body/div[4]/div[3]/div[1]/div[2]/div/div/div/div/div[3]/div/div/a[7]""")
         max_pages = int(total_pages.text)
-        # max_pages //= 3
         print("Found", str(max_pages), "pages of results.", end="")
     except Exception:
         print("Can't tell how many pages there are", end="")
-        max_pages = 5
-    # max_pages = 10
+        max_pages = 10
     driver.minimize_window()
     data = []
     for page in range(max_pages + 1):
-        # Find all search results
         results = driver.find_elements_by_class_name("result")
-        results.__delitem__(0)
+        # results.__delitem__(0)
         partials = [r.find_element_by_class_name("result_wrap").get_attribute("onclick").split(",")[6].strip().strip("'") for r in results]
         links = ["https://www.tripadvisor.com" + p for p in partials]
-        categories = [t[1:].split('_')[0] for t in partials]
         print(f"\nFound {len(links)} links on page {page+1}/{max_pages} =>", end="")
         date_gen = datetime.today().replace(microsecond=0)
         for index, url in enumerate(links):
-            category = categories[index]
             try:
-                newrow = scrape_article(url, category)
+                newrow = scrape_article(url)
             except Exception as e:
                 driver.quit()
                 print(e)
-                raise
-            newrow.append(category)
+                return pd.DataFrame(data, columns=list(column_titles))
             newrow.append(date_gen)
             data.append(newrow)
 
