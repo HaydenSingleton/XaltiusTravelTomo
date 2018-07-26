@@ -39,9 +39,8 @@ def script():
     queries = [s.capitalize() for s in input_list]
     print("Searching: [" + ", ".join(queries), end="]")
 
-    old_log = "geckodriver.log"
     try:
-        os.remove(old_log)
+        os.remove("geckodriver.log")
     except:
         pass
     try:
