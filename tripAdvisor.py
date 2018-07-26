@@ -13,17 +13,17 @@ from selenium import webdriver
 from selenium.common.exceptions import (ElementClickInterceptedException,
                                         StaleElementReferenceException,
                                         TimeoutException)
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
+# from selenium.webdriver.common.by import By
+# from selenium.webdriver.common.keys import Keyss
 from selenium.webdriver.chrome.options import Options
 # from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
+# from selenium.webdriver.support import expected_conditions as EC
+# from selenium.webdriver.support.ui import WebDriverWait
 
 # Global variables
 column_titles = ['Title', 'Rating', 'Review Count', 'User Reviews',
                  'Phone Number', 'Address', 'Locality', 'Country',
-                 'Keywords', 'Duration', 'Price', 'Type', 'Date Generated']
+                 'Keywords', 'Duration', 'Price', 'Date Generated']
 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36'}
 # driver_path = os.path.normpath("C:\\Users\\Hayden\\Anaconda3\\selenium\\webdriver")
 
@@ -41,23 +41,20 @@ def script():
 
     try:
         os.remove("geckodriver.log")
-    except:
+    except OSError:
         pass
     try:
         os.mkdir("data")
-    except WindowsError as e:
+    except OSError as e:
         pass
-
+    genres = ['Hotels', 'Resturants', 'Attractions']
     for place in queries:
-        filepath = os.path.join(os.path.abspath("data"), place + "_data.csv")
-        df = search(place)
-        try:
-            df.to_csv(path_or_buf=filepath, index_label="Index")  # , columns=column_titles)
-        except PermissionError:
-            filepath = filepath[:-4] + "-2" + filepath[-4:]
-            df.to_csv(path_or_buf=filepath, index_label="Index")
-        print(strftime("\nFinished at %H:%M:%S\n", localtime()))
-        print(df)
+        dfs = list(search(place))
+        for i, genre in enumerate(genres):
+            root_path = place + "_" + genre + "_data.csv"
+            filepath = os.path.join(os.path.abspath("data"), root_path)
+            dfs[i].to_csv(path_or_buf=filepath, index_label="Index")  # , columns=column_titles)
+        print(strftime("\nFinished {} at %H:%M:%S\n".format(genre), localtime()))
 
 
 def search(query):
@@ -69,76 +66,66 @@ def search(query):
     # os.environ['MOZ_HEADLESS'] = '1'
     # binary = FirefoxBinary('C:\\Program Files\\Mozilla Firefox\\firefox.exe', log_file=sys.stdout)
     # driver = webdriver.Firefox(firefox_binary=binary)
-    wait = WebDriverWait(driver, 5)
+    driver.set_page_load_timeout(10)
 
-    # Navigate to trip tripadvisor
-    main_url = "https://www.tripadvisor.com/"
+    # Three types of article we grab from trip advisor
+    genres = ['Hotels', 'Resturants', 'Attractions']
+
+    # Navigate to trip TripAdvisor, starting with hotels
+    main_url = "https://www.tripadvisor.com/Hotels"
     # This should redirect to the correct local domain as needed (ex- .com.sg) AFAIK
     driver.get(main_url)
+    driver.find_element_by_id("global-nav-hotels").click()
+    driver.find_element_by_class_name("typeahead_input").send_keys(query)
+    driver.find_element_by_class_name("submit_text").click()
+    time.sleep(1)
 
-    # Search for the place provided and click on the "Things to Do" searchbar
-    try:
-        wait.until(EC.presence_of_element_located((By.CLASS_NAME, "mag_glass_parent")))
-        searchicon = driver.find_element_by_class_name("mag_glass_parent")
-        searchicon.click()
-        wait.until(EC.presence_of_element_located((By.ID, "mainSearch")))
-        searchbar = driver.find_element_by_id("mainSearch")
-        wait.until(EC.visibility_of(searchbar))
-        searchbar.click()
-        searchbar.send_keys(query)
-        searchbar.send_keys(Keys.RETURN)
-        try:
-            search_button = driver.find_element_by_id("SEARCH_BUTTON")
-            if search_button.is_displayed():
-                try:
-                    search_button.click()
-                except ElementClickInterceptedException:
-                    time.sleep(1)
-                    search_button.click()
-            else:
-                driver.find_element_by_class_name("result-title").click()
-        except StaleElementReferenceException:
-            pass
+    data = get_data(driver, genres[0])
+    h_df = pd.DataFrame(data, columns=list(column_titles))
 
-    except Exception as e:
-        driver.quit()
-        print("Problem:", e)
-        raise
+    driver.find_element_by_id("global-nav-restaurants").click()
 
-    # Wait for website to load search results
-    try:
-        wait.until(EC.presence_of_element_located((By.ID, "HEADING")))
-    except TimeoutException:
-        time.sleep(1)
-        wait.until(EC.presence_of_element_located((By.ID, "HEADING")))
+    data2 = get_data(driver, genres[1])
+    r_df = pd.DataFrame(data2, columns=list(column_titles))
 
-    # Visit all pages
+    driver.find_element_by_id("global-nav-attractions").click()
+
+    data3 = get_data(driver, genres[2])
+    a_df = pd.DataFrame(data3, columns=list(column_titles))
+
+    driver.quit()
+    return h_df, r_df, a_df
+
+
+def get_data(driver, genre, max_pages=10):
+
     try:
         total_pages = driver.find_element_by_xpath("""/html/body/div[4]/div[3]/div[1]/div[2]/div/div/div/div/div[3]/div/div/a[7]""")
         max_pages = int(total_pages.text)
         print("Found", str(max_pages), "pages of results.", end="")
     except Exception:
         print("Can't tell how many pages there are", end="")
-        max_pages = 10
-    driver.minimize_window()
+
     data = []
     for page in range(max_pages + 1):
-        results = driver.find_elements_by_class_name("result")
-        # results.__delitem__(0)
-        partials = [r.find_element_by_class_name("result_wrap").get_attribute("onclick").split(",")[6].strip().strip("'") for r in results]
-        links = ["https://www.tripadvisor.com" + p for p in partials]
+
+        if genre != "Resturants":
+            soup = BeautifulSoup(driver.page_source, 'html5lib')
+            partials = soup.find_all("div", class_="listing_title")
+            links = ["https://www.tripadvisor.com" + p.a['href'] for p in partials if "http" not in p.a['href']]
+        if genre == "Resturants":
+            soup = BeautifulSoup(driver.page_source, 'html5lib')
+            partials = soup.find_all("div", class_="title")
+            links = ["https://www.tripadvisor.com" + p.a['href'] for p in partials if "http" not in p.a['href']]
         print(f"\nFound {len(links)} links on page {page+1}/{max_pages} =>", end="")
+
         date_gen = datetime.today().replace(microsecond=0)
-        for index, url in enumerate(links):
-            try:
-                newrow = scrape_article(url)
-            except Exception as e:
-                driver.quit()
-                print(e)
-                return pd.DataFrame(data, columns=list(column_titles))
+        driver.minimize_window()
+        for link in links:
+            newrow = scrape_article(link)
             newrow.append(date_gen)
             data.append(newrow)
-
+        driver.minimize_window()
         try:
             next_page = driver.current_url[:-1] + str(30 * (page + 1))
             try:
@@ -150,13 +137,10 @@ def search(query):
             print("\nFailed to go past page {}/{}".format(page + 1, max_pages))
             print(e)
             break
-
-    driver.quit()
-    final_df = pd.DataFrame(data, columns=list(column_titles))
-    return final_df
+    return data
 
 
-def scrape_article(url, category):
+def scrape_article(url):
     print(".", end="", flush=True)
     # Get BS opbject for the article
     # headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36'}
@@ -230,7 +214,6 @@ def scrape_article(url, category):
                 break
 
     # Put data into a list and return it
-    description = description
     row = [title, rating, review_count, user_reviews, phone, address, local, country, keywords, rec_duration, price]
     return row
 
