@@ -15,7 +15,8 @@ from selenium.common.exceptions import (ElementClickInterceptedException,
                                         TimeoutException)
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
+from selenium.webdriver.chrome.options import Options
+# from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
@@ -38,9 +39,14 @@ def script():
     queries = [s.capitalize() for s in input_list]
     print("Searching: [" + ", ".join(queries), end="]")
 
+    old_log = "geckodriver.log"
+    try:
+        os.remove(old_log)
+    except:
+        pass
     try:
         os.mkdir("data")
-    except WindowsError:
+    except WindowsError as e:
         pass
 
     for place in queries:
@@ -52,18 +58,18 @@ def script():
             filepath = filepath[:-4] + "-2" + filepath[-4:]
             df.to_csv(path_or_buf=filepath, index_label="Index")
         print(strftime("\nFinished at %H:%M:%S\n", localtime()))
-        print(df.head())
+        print(df)
 
 
 def search(query):
     print("\nBeginning search in", query)
     # Set up browser
-    # chrome_options = Options()
-    # chrome_options.add_argument('--log-level=3')
-    # driver = webdriver.Chrome(chrome_options=chrome_options)
+    chrome_options = Options()
+    chrome_options.add_argument('--log-level=3')
+    driver = webdriver.Chrome(chrome_options=chrome_options)
     # os.environ['MOZ_HEADLESS'] = '1'
-    binary = FirefoxBinary('C:\\Program Files\\Mozilla Firefox\\firefox.exe', log_file=sys.stdout)
-    driver = webdriver.Firefox(firefox_binary=binary)
+    # binary = FirefoxBinary('C:\\Program Files\\Mozilla Firefox\\firefox.exe', log_file=sys.stdout)
+    # driver = webdriver.Firefox(firefox_binary=binary)
     wait = WebDriverWait(driver, 5)
 
     # Navigate to trip tripadvisor
@@ -97,11 +103,15 @@ def search(query):
 
     except Exception as e:
         driver.quit()
-        print("Problem -", e)
+        print("Problem:", e)
         raise
 
     # Wait for website to load search results
-    wait.until(EC.presence_of_element_located((By.ID, "HEADING")))
+    try:
+        wait.until(EC.presence_of_element_located((By.ID, "HEADING")))
+    except TimeoutException:
+        time.sleep(1)
+        wait.until(EC.presence_of_element_located((By.ID, "HEADING")))
 
     # Visit all pages
     try:
@@ -111,11 +121,9 @@ def search(query):
         print("Found", str(max_pages), "pages of results.", end="")
     except Exception:
         print("Can't tell how many pages there are", end="")
-        max_pages = 30
+        max_pages = 5
     # max_pages = 10
     driver.minimize_window()
-
-    date_gen = datetime.today().replace(microsecond=0)
     data = []
     for page in range(max_pages + 1):
         # Find all search results
@@ -123,33 +131,31 @@ def search(query):
         results.__delitem__(0)
         partials = [r.find_element_by_class_name("result_wrap").get_attribute("onclick").split(",")[6].strip().strip("'") for r in results]
         links = ["https://www.tripadvisor.com" + p for p in partials]
-        types = [t[1:].split('_')[0] for t in partials]
-        print(f"\nFound {len(links)} links on page {page+1}/{max_pages}-")
+        categories = [t[1:].split('_')[0] for t in partials]
+        print(f"\nFound {len(links)} links on page {page+1}/{max_pages} =>", end="")
+        date_gen = datetime.today().replace(microsecond=0)
         for index, url in enumerate(links):
-            if index > 2:
-                continue
+            category = categories[index]
             try:
-                newrow = scrape_article(url)
+                newrow = scrape_article(url, category)
             except Exception as e:
                 driver.quit()
                 print(e)
                 raise
-            newrow.append(types[index])
+            newrow.append(category)
             newrow.append(date_gen)
             data.append(newrow)
 
         try:
             next_page = driver.current_url[:-1] + str(30 * (page + 1))
             try:
-                print(next_page)
                 driver.get(next_page)
             except Exception as e:
-                print(e)
                 time.sleep(2)
                 driver.get(next_page)
         except Exception as e:
-            print("\nFailed to go past page {}/{} :".format(page + 1, max_pages))
-            print(e)          # <--------------- ## THIS MOFO RIGHT HERE
+            print("\nFailed to go past page {}/{}".format(page + 1, max_pages))
+            print(e)
             break
 
     driver.quit()
@@ -157,7 +163,7 @@ def search(query):
     return final_df
 
 
-def scrape_article(url):
+def scrape_article(url, category):
     print(".", end="", flush=True)
     # Get BS opbject for the article
     # headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36'}
