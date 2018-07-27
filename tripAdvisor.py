@@ -45,7 +45,7 @@ def script():
         pass
     try:
         os.mkdir("data")
-    except OSError as e:
+    except OSError:
         pass
     genres = ['Hotels', 'Resturants', 'Attractions']
     for place in queries:
@@ -112,25 +112,24 @@ def get_data(driver, genre, max_pages=10):
         print("Can't tell how many pages there are, searching 10", end="")
 
     data = []
-    for page in range(max_pages + 1):
+    date_gen = datetime.today().replace(microsecond=0)
 
-        if genre != "Resturants":
-            soup = BeautifulSoup(driver.page_source, 'html5lib')
+    for page in range(max_pages):
+        soup = BeautifulSoup(driver.page_source, 'html5lib')
+        if genre is "Hotels" or genre is "Attractions":
             partials = soup.find_all("div", class_="listing_title")
-            links = ["https://www.tripadvisor.com" + p.a['href'] for p in partials if "http" not in p.a['href']]
-        if genre == "Resturants":
-            soup = BeautifulSoup(driver.page_source, 'html5lib')
+        if genre is "Resturants":
             partials = soup.find_all("div", class_="title")
-            links = ["https://www.tripadvisor.com" + p.a['href'] for p in partials if "http" not in p.a['href']]
+        links = ["https://www.tripadvisor.com" + p.a['href'] for p in partials if "http" not in p.a['href']]
         print(f"\nFound {len(links)} links on page {page+1}/{max_pages} =>", end="")
 
-        date_gen = datetime.today().replace(microsecond=0)
         driver.minimize_window()
-        for link in links:
+        for i, link in enumerate(links):
+            if i > 2:
+                break
             newrow = scrape_article(link)
             newrow.append(date_gen)
             data.append(newrow)
-        driver.minimize_window()
         try:
             next_page = driver.current_url[:-1] + str(30 * (page + 1))
             try:
@@ -142,6 +141,7 @@ def get_data(driver, genre, max_pages=10):
             print("\nFailed to go past page {}/{}".format(page + 1, max_pages))
             print(e)
             break
+    driver.maximize_window()
     return data
 
 
@@ -189,10 +189,10 @@ def scrape_article(url):
         user_reviews = {ur.find("div", class_="info_text").text: ur.find("p", class_="partial_entry").text for ur in review_containers}
     except Exception:
         user_reviews = None
-    try:
-        description = soup.find("div", class_="AttractionDetailAboutCard__section--3ZGme").text
-    except Exception:
-        description = None
+    # try:
+    #     description = soup.find("div", class_="AttractionDetailAboutCard__section--3ZGme").text
+    # except Exception:
+    #     description = None
     try:
         rec_duration = soup.find("div", class_="AboutSection__textAlignWrapper--3dWW_").text
     except Exception:
