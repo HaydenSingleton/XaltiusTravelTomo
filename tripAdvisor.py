@@ -10,12 +10,12 @@ import requests
 from bs4 import BeautifulSoup
 
 from selenium import webdriver
-from selenium.common.exceptions import (ElementClickInterceptedException,
+from selenium.common.exceptions import (NoSuchElementException,
                                         StaleElementReferenceException,
                                         TimeoutException)
-# from selenium.webdriver.common.by import By
-# from selenium.webdriver.common.keys import Keyss
+# from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.options import Options
+
 # from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
 # from selenium.webdriver.support import expected_conditions as EC
 # from selenium.webdriver.support.ui import WebDriverWait
@@ -75,7 +75,12 @@ def search(query):
     main_url = "https://www.tripadvisor.com/Hotels"
     # This should redirect to the correct local domain as needed (ex- .com.sg) AFAIK
     driver.get(main_url)
-    driver.find_element_by_id("global-nav-hotels").click()
+    try:
+        driver.find_element_by_id("global-nav-hotels").click()
+    except NoSuchElementException:
+        driver.quit()
+        print("Not connected to internet")
+        exit(0)
     driver.find_element_by_class_name("typeahead_input").send_keys(query)
     driver.find_element_by_class_name("submit_text").click()
     time.sleep(1)
@@ -104,7 +109,7 @@ def get_data(driver, genre, max_pages=10):
         max_pages = int(total_pages.text)
         print("Found", str(max_pages), "pages of results.", end="")
     except Exception:
-        print("Can't tell how many pages there are", end="")
+        print("Can't tell how many pages there are, searching 10", end="")
 
     data = []
     for page in range(max_pages + 1):
