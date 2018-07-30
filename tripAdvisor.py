@@ -68,9 +68,6 @@ def search(query):
     # driver = webdriver.Firefox(firefox_binary=binary)
     driver.set_page_load_timeout(10)
 
-    # Three types of article we grab from trip advisor
-    genres = ['Hotels', 'Resturants', 'Attractions']
-
     # Navigate to trip TripAdvisor, starting with hotels
     main_url = "https://www.tripadvisor.com/Hotels"
     # This should redirect to the correct local domain as needed (ex- .com.sg) AFAIK
@@ -85,45 +82,74 @@ def search(query):
     driver.find_element_by_class_name("submit_text").click()
     time.sleep(1)
 
-    data = get_data(driver, genres[0])
+    data = get_data(driver, "Hotels")
     h_df = pd.DataFrame(data, columns=list(column_titles))
 
     driver.find_element_by_id("global-nav-restaurants").click()
-
-    data2 = get_data(driver, genres[1])
+    data2 = get_data(driver, "Resturants")
     r_df = pd.DataFrame(data2, columns=list(column_titles))
 
     driver.find_element_by_id("global-nav-attractions").click()
-
-    data3 = get_data(driver, genres[2])
+    data3 = get_data(driver, "Attractions")
     a_df = pd.DataFrame(data3, columns=list(column_titles))
 
     driver.quit()
     return h_df, r_df, a_df
 
 
-def get_data(driver, genre, max_pages=10):
+def get_data(driver, genre, max_pages=5):
+    # if genre is "Hotels":
+    #     partials_class = "listing_title"
+    #     results_class = "relWrap"
+    # elif genre is "Resturants":
+    #     partials_class = "listing"
+    # else:
+    #     partials_class = "listing_title"
 
     try:
-        total_pages = driver.find_element_by_xpath("""/html/body/div[4]/div[3]/div[1]/div[2]/div/div/div/div/div[3]/div/div/a[7]""")
+        soup = BeautifulSoup(driver.page_source, 'html5lib')
+        pagelinks = soup.find("div", class_="pageNumbers")
+        total_pages = pagelinks.find_all("a")[-1]
         max_pages = int(total_pages.text)
-        print("Found", str(max_pages), "pages of results.", end="")
-    except Exception:
-        print("Can't tell how many pages there are, searching 10", end="")
+        print("Found {} pages of {}.".format(str(max_pages), genre), end="")
+    except Exception as e:
+        print("Can't tell how many pages there are, searching",max_pages,":",e)
+
+
+    # Temporary #
+    if max_pages > 20:
+        max_pages = 10
 
     data = []
     date_gen = datetime.today().replace(microsecond=0)
 
     for page in range(max_pages):
         soup = BeautifulSoup(driver.page_source, 'html5lib')
-        if genre is "Hotels" or genre is "Attractions":
-            partials = soup.find_all("div", class_="listing_title")
-        if genre is "Resturants":
-            partials = soup.find_all("div", class_="title")
-        links = ["https://www.tripadvisor.com" + p.a['href'] for p in partials if "http" not in p.a['href']]
+        if genre is "Hotels":
+            results = soup.find("div", class_="relWrap")
+            partials = results.find_all("div", class_="listing_title")
+
+        elif genre is "Resturants":
+            results = soup.find_all("div", id="EATERY_SEARCH_RESULTS")
+            places = results.find_all("div", class_="listing")
+            partials = places.find_all("div", class_="title")
+
+        else:
+            results = soup.find_all("div", id="FILTERED_LIST")
+            partials = results.find_all("div", class_="listing_title")
+
+        links = []
+        for p in partials:
+            try:
+                if "http" not in p.a['href']:
+                    links.append("https://www.tripadvisor.com" + p.a['href'])
+                else:
+                    links.append(p.a['href'])
+            except TypeError:
+                continue
         print(f"\nFound {len(links)} links on page {page+1}/{max_pages} =>", end="")
 
-        driver.minimize_window()
+        # driver.minimize_window()
         for i, link in enumerate(links):
             if i > 2:
                 break
@@ -141,7 +167,8 @@ def get_data(driver, genre, max_pages=10):
             print("\nFailed to go past page {}/{}".format(page + 1, max_pages))
             print(e)
             break
-    driver.maximize_window()
+    print("\nDone with",genre)
+    # driver.maximize_window()
     return data
 
 
