@@ -21,7 +21,7 @@ from selenium.webdriver.chrome.options import Options
 # Global variables
 column_titles_h = ['Title', 'Rating', 'Review Count', 'Phone Number', 'Address', 'Locality', 'Country', 'Stars', 'User Reviews', 'Keywords', 'Date Generated']
 column_titles_r = ['Title', 'Rating', 'Review Count', 'Phone Number', 'Address', 'Locality', 'Country', 'Cusines', 'Date Generated']
-column_titles_a = ['Title', 'Rating', 'Review Count', 'Phone Number', 'Address', 'Locality', 'Country', 'Duration' ,'Price', 'Description', 'User Reviews', 'Keywords', 'Date Generated']
+column_titles_a = ['Title', 'Rating', 'Review Count', 'Phone Number', 'Address', 'Locality', 'Country', 'Duration', 'Price', 'Description', 'User Reviews', 'Keywords', 'Date Generated']
 
 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36'}
 # driver_path = os.path.normpath("C:\\Users\\Hayden\\Anaconda3\\selenium\\webdriver")
@@ -389,7 +389,7 @@ def scrape_attraction(url):
                 break
 
     # Put data into a list and return it
-    ['Title', 'Rating', 'Review Count', 'Phone Number', 'Address', 'Locality', 'Country', 'Duration','Price', 'Description', 'User Reviews', 'Keywords', 'Date Generated']
+    ['Title', 'Rating', 'Review Count', 'Phone Number', 'Address', 'Locality', 'Country', 'Duration', 'Price', 'Description', 'User Reviews', 'Keywords', 'Date Generated']
 
     row = [title, rating, review_count, phone, address, local, country, rec_duration, price, description, user_reviews, keywords]
     return row
