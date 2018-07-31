@@ -1,6 +1,5 @@
 # TravelTomo
-Main script is "_tripAdivisor-test.py"
-Last working version is "_tripAdvisor.py"
+The script is "tripAdivisor.py" takes a city name as an agrument (command line or internal list) and performs a search on TripAdvisor.com to get data about that location's Hotels, Resturants, and Attractions
 
 ## Script to pull data from Trip Advisor's "Things to do" search results
 This code takes data from Trip Advisor about attractions in the location/city, to be
