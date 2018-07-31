@@ -18,11 +18,14 @@ from selenium.webdriver.chrome.options import Options
 # from selenium.webdriver.support import expected_conditions as EC
 # from selenium.webdriver.support.ui import WebDriverWait
 
+# Flag to shorten loop execution
+testing = False
+
+
 # Global variables
 column_titles_h = ['Title', 'Rating', 'Review Count', 'Phone Number', 'Address', 'Locality', 'Country', 'Stars', 'User Reviews', 'Keywords', 'Date Generated']
 column_titles_r = ['Title', 'Rating', 'Review Count', 'Phone Number', 'Address', 'Locality', 'Country', 'Cusines', 'Date Generated']
 column_titles_a = ['Title', 'Rating', 'Review Count', 'Phone Number', 'Address', 'Locality', 'Country', 'Duration', 'Price', 'Description', 'User Reviews', 'Keywords', 'Date Generated']
-
 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36'}
 # driver_path = os.path.normpath("C:\\Users\\Hayden\\Anaconda3\\selenium\\webdriver")
 
@@ -83,7 +86,6 @@ def search(query):
         exit(0)
     driver.find_element_by_class_name("typeahead_input").send_keys(query)
     driver.find_element_by_class_name("submit_text").click()
-    time.sleep(1)
 
     data = get_data(driver, "Hotels")
     h_df = pd.DataFrame(data, columns=list(column_titles_h))
@@ -101,6 +103,7 @@ def search(query):
 
 
 def get_data(driver, genre, max_pages=5):
+    time.sleep(1)
     try:
         outersoup = BeautifulSoup(driver.page_source, 'html5lib')
         pagelinks = outersoup.find("div", class_="pageNumbers")
@@ -111,7 +114,7 @@ def get_data(driver, genre, max_pages=5):
         print("Can't tell how many pages there are, searching", max_pages, "-", e)
 
     # Temporary #
-    if max_pages > 5:
+    if testing:
         max_pages = 5
 
     data = []
@@ -146,7 +149,7 @@ def get_data(driver, genre, max_pages=5):
 
         # driver.minimize_window()
         for i, link in enumerate(links):
-            if i > 2:
+            if i > 5 and testing:
                 break
             newrow = scrape_article(link, genre)
             newrow.append(date_gen)
@@ -154,12 +157,18 @@ def get_data(driver, genre, max_pages=5):
         print()
 
         try:
-            page_nav_links = outersoup.find("div", class_=["unified", "pagination"]).find_all("a")
-            next_page = page_nav_links[1].get("href")
-            next_page = "https://www.tripadvisor.com/" + str(next_page)
-            driver.get(next_page)
+            nb = driver.find_elements_by_xpath("//*[contains(text(), 'Next')]")[-1]
+            try:
+                driver.get(nb.get_attribute('href'))
+            except Exception:
+                print("Failed to go past page {}/{} (Could not click next)".format(page + 1, max_pages))
+                break
+            # page_nav_links = outersoup.find("div", class_=["unified", "pagination"]).find_all("a")
+            # next_page = page_nav_links[1].get("href")
+            # next_page = "https://www.tripadvisor.com/" + str(next_page)
+            # driver.get(next_page)
         except Exception as e:
-            print("\nFailed to go past page {}/{}".format(page + 1, max_pages))
+            print("Failed to go past page {}/{} ({})".format(page + 1, max_pages, e))
             raise
     print("\nDone with", genre)
     # driver.maximize_window()
@@ -294,9 +303,11 @@ def scrape_resturant(url):
     # except Exception:
     #     keywords = None
     try:
-        center = soup.find("div", class_="centerWell")
-        centercols = center.find_all("div", class_="subTitle")
-        cuisines = centercols[0].find("div", class_="text").text.strip('"').strip()
+        cuisines = soup.find("div", class_="rating_and_popularity").find("span", class_="header_links").text.strip('"').strip()
+        # center = soup.find("div", class_="centerWell")
+        # cus = center.find("div", class_="cuisines").div.div.text
+        # # pri = center.find("div", class_="ui_columns").div[1]
+        # cuisines = cus.div.div.text.strip('"').strip()
     except AttributeError:
         cuisines = None
 
