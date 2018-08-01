@@ -79,13 +79,13 @@ def search(query):
         # Navigate to trip TripAdvisor, starting with hotels
         main_url = "https://www.tripadvisor.com/Hotels"
         # This should redirect to the correct local domain as needed (ex- .com.sg) AFAIK
-        driver.get(main_url)
         try:
+            driver.get(main_url)
             driver.find_element_by_id("global-nav-hotels").click()
-        except NoSuchElementException as e:
+        except NoSuchElementException:
             driver.quit()
+            print("Unable to access website")
             print("Are you connected to internet ?")
-            print(e)
             exit(0)
         driver.find_element_by_class_name("typeahead_input").send_keys(query)
         driver.find_element_by_class_name("submit_text").click()
