@@ -77,7 +77,7 @@ def script():
                                 "Address": sqlalchemy.types.VARCHAR(255),
                                 "Locality": sqlalchemy.types.VARCHAR(255),
                                 "Country": sqlalchemy.types.VARCHAR(255),
-                                "Stars": sqlalchemy.types.VARCHAR(25),
+                                "Stars": sqlalchemy.types.VARCHAR(255),
                                 "User Reviews" : sqlalchemy.types.TEXT,
                                 "Keywords" : sqlalchemy.types.TEXT,
                                 "Date Generated": sqlalchemy.types.TIMESTAMP
@@ -157,6 +157,7 @@ def search(query):
     except WebDriverException:
         print("\nFatal Error, quiting...")
         driver.quit()
+        quit()
     return h_df, r_df, a_df
 
 
@@ -173,7 +174,7 @@ def get_data(driver, genre, max_pages=5):
 
     # Temporary #
     if testing:
-        max_pages = 5
+        max_pages = 2
 
     data = []
     date_gen = datetime.today().replace(microsecond=0)
@@ -221,7 +222,8 @@ def get_data(driver, genre, max_pages=5):
             except Exception as e:
                 print("Failed to go past page {}/{} (Could not click next)".format(page + 1, max_pages))
                 print(e)
-                print(nb.get_attribute('href'))
+                print("href:", nb.get_attribute('href'))
+                print(nb)
                 break
             # page_nav_links = outersoup.find("div", class_=["unified", "pagination"]).find_all("a")
             # next_page = page_nav_links[1].get("href")
@@ -285,7 +287,7 @@ def scrape_hotel(url):
     except AttributeError:
         keywords = None
     try:
-        star_count = soup.find("div", class_="starRatingWidget").text
+        star_count = soup.find("div", class_="starRatingWidget").text.split(".")[1]
     except AttributeError:
         star_count = None
 
