@@ -10,7 +10,7 @@ import requests
 from bs4 import BeautifulSoup
 
 from selenium import webdriver
-from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import NoSuchElementException, WebDriverException
 # from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.options import Options
 
@@ -19,13 +19,13 @@ from selenium.webdriver.chrome.options import Options
 # from selenium.webdriver.support.ui import WebDriverWait
 
 # Flag to shorten loop execution
-testing = False
+testing = True
 
 
 # Global variables
 column_titles_h = ['Title', 'Rating', 'Review Count', 'Phone Number', 'Address', 'Locality', 'Country', 'Stars', 'User Reviews', 'Keywords', 'Date Generated']
 column_titles_r = ['Title', 'Rating', 'Review Count', 'Phone Number', 'Address', 'Locality', 'Country', 'Cusines', 'Date Generated']
-column_titles_a = ['Title', 'Rating', 'Review Count', 'Phone Number', 'Address', 'Locality', 'Country', 'Duration', 'Price', 'Description', 'User Reviews', 'Keywords', 'Date Generated']
+column_titles_a = ['Title', 'Rating', 'Review Count', 'Phone Number', 'Address', 'Locality', 'Country', 'Suggested Duration', 'Price', 'Description', 'User Reviews', 'Keywords', 'Date Generated']
 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36'}
 # driver_path = os.path.normpath("C:\\Users\\Hayden\\Anaconda3\\selenium\\webdriver")
 
@@ -39,8 +39,9 @@ def script():
         input_list = sys.argv[1:]
 
     queries = [s.capitalize() for s in input_list]
-    print("Searching: [" + ", ".join(queries), end="]")
-
+    print("Searching: [" + ", ".join(queries), end="]\n")
+    if testing:
+        print("Testing Enabled".center(80,'-'), end="")
     try:
         os.remove("geckodriver.log")
     except OSError:
@@ -56,49 +57,54 @@ def script():
         for i, genre in enumerate(genres):
             root_path = place + "_" + genre + "_data.csv"
             filepath = os.path.join(os.path.abspath(folder_path), root_path)
-            dfs[i].to_csv(path_or_buf=filepath, index_label="Index")  # , columns=column_titles)
-        print(strftime("\nFinished {} at %H:%M:%S\n".format(genre), localtime()))
+            dfs[i].to_csv(path_or_buf=filepath)  # , columns=column_titles)
+            print(strftime("Finished {} at %H:%M:%S\n".format(genre), localtime()))
 
 
 def search(query):
-    print("\nBeginning search in", query)
-    # Set up browser
-    chrome_options = Options()
-    chrome_options.add_argument('--log-level=3')
-    chrome_options.add_argument('--ignore-certificate-errors')
-    chrome_options.add_argument('--ignore-ssl-errors')
-    driver = webdriver.Chrome(chrome_options=chrome_options)
-    # os.environ['MOZ_HEADLESS'] = '1'
-    # binary = FirefoxBinary('C:\\Program Files\\Mozilla Firefox\\firefox.exe', log_file=sys.stdout)
-    # driver = webdriver.Firefox(firefox_binary=binary)
-    driver.set_page_load_timeout(10)
-
-    # Navigate to trip TripAdvisor, starting with hotels
-    main_url = "https://www.tripadvisor.com/Hotels"
-    # This should redirect to the correct local domain as needed (ex- .com.sg) AFAIK
-    driver.get(main_url)
+    h_df, r_df, a_df = pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
     try:
-        driver.find_element_by_id("global-nav-hotels").click()
-    except NoSuchElementException as e:
+        print("\nBeginning search in", query)
+        # Set up browser
+        chrome_options = Options()
+        chrome_options.add_argument('--log-level=3')
+        chrome_options.add_argument('--ignore-certificate-errors')
+        chrome_options.add_argument('--ignore-ssl-errors')
+        driver = webdriver.Chrome(chrome_options=chrome_options)
+        # os.environ['MOZ_HEADLESS'] = '1'
+        # binary = FirefoxBinary('C:\\Program Files\\Mozilla Firefox\\firefox.exe', log_file=sys.stdout)
+        # driver = webdriver.Firefox(firefox_binary=binary)
+        driver.set_page_load_timeout(10)
+
+        # Navigate to trip TripAdvisor, starting with hotels
+        main_url = "https://www.tripadvisor.com/Hotels"
+        # This should redirect to the correct local domain as needed (ex- .com.sg) AFAIK
+        driver.get(main_url)
+        try:
+            driver.find_element_by_id("global-nav-hotels").click()
+        except NoSuchElementException as e:
+            driver.quit()
+            print("Are you connected to internet ?")
+            print(e)
+            exit(0)
+        driver.find_element_by_class_name("typeahead_input").send_keys(query)
+        driver.find_element_by_class_name("submit_text").click()
+
+        data = get_data(driver, "Hotels")
+        h_df = pd.DataFrame(data, columns=list(column_titles_h))
+
+        driver.find_element_by_id("global-nav-restaurants").click()
+        data2 = get_data(driver, "Resturants")
+        r_df = pd.DataFrame(data2, columns=list(column_titles_r))
+
+        driver.find_element_by_id("global-nav-attractions").click()
+        data3 = get_data(driver, "Attractions")
+        a_df = pd.DataFrame(data3, columns=list(column_titles_a))
+
         driver.quit()
-        print("Are you connected to internet ?")
-        print(e)
-        exit(0)
-    driver.find_element_by_class_name("typeahead_input").send_keys(query)
-    driver.find_element_by_class_name("submit_text").click()
-
-    data = get_data(driver, "Hotels")
-    h_df = pd.DataFrame(data, columns=list(column_titles_h))
-
-    driver.find_element_by_id("global-nav-restaurants").click()
-    data2 = get_data(driver, "Resturants")
-    r_df = pd.DataFrame(data2, columns=list(column_titles_r))
-
-    driver.find_element_by_id("global-nav-attractions").click()
-    data3 = get_data(driver, "Attractions")
-    a_df = pd.DataFrame(data3, columns=list(column_titles_a))
-
-    driver.quit()
+    except WebDriverException:
+        print("\nFatal Error, quiting...")
+        driver.quit()
     return h_df, r_df, a_df
 
 
@@ -160,8 +166,10 @@ def get_data(driver, genre, max_pages=5):
             nb = driver.find_elements_by_xpath("//*[contains(text(), 'Next')]")[-1]
             try:
                 driver.get(nb.get_attribute('href'))
-            except Exception:
+            except Exception as e:
                 print("Failed to go past page {}/{} (Could not click next)".format(page + 1, max_pages))
+                print(e)
+                print(nb.get_attribute('href'))
                 break
             # page_nav_links = outersoup.find("div", class_=["unified", "pagination"]).find_all("a")
             # next_page = page_nav_links[1].get("href")
@@ -220,13 +228,12 @@ def scrape_hotel(url):
         user_reviews = None
 
     try:
-        keywords_container = soup.find("div", class_="ui_tagcloud_group").text.split("\n")  # Convert to a list
-        kwc = [w for w in keywords_container if w is not ""][1:]  # Remove first tag "all reviews" and empty strings
-        keywords = {w.split('"')[1]: w.split()[-2] for w in kwc}  # Seperate tag and count and put into dict
+        keywords_container = soup.find("div", class_=["prw_rup prw_filters_tag_cloud","ui_tagcloud_group"]).text.split("\n")[1:]  # Convert to a list
+        keywords = {w.split('"')[1]: w.split()[-2] for w in keywords_container if w.strip()}  # Seperate tag and count and put into dict
     except AttributeError:
         keywords = None
     try:
-        star_count = soup.find("div", class_="starRatingWidget").text.strip('"').split()[0]
+        star_count = soup.find("div", class_="starRatingWidget").text
     except AttributeError:
         star_count = None
 
@@ -289,25 +296,14 @@ def scrape_resturant(url):
     # except Exception:
     #     user_reviews = None
     # try:
-    #     rec_duration = soup.find("div", class_="AboutSection__textAlignWrapper--3dWW_").text
-    # except Exception:
-    #     rec_duration = None
-    # try:
-    #     price = soup.find("span", class_="fromPrice").text.rstrip('*')
-    # except Exception:
-    #     price = None
-    # try:
     #     keywords_container = soup.find("div", class_="ui_tagcloud_group").text.split("\n")  # Convert to a list
     #     kwc = [w for w in keywords_container if w is not ""][1:]  # Remove first tag "all reviews" and empty strings
     #     keywords = {w.split('"')[1]: w.split()[-2] for w in kwc}  # Seperate tag and count and put into dict
     # except Exception:
     #     keywords = None
     try:
-        cuisines = soup.find("div", class_="rating_and_popularity").find("span", class_="header_links").text.strip('"').strip()
-        # center = soup.find("div", class_="centerWell")
-        # cus = center.find("div", class_="cuisines").div.div.text
-        # # pri = center.find("div", class_="ui_columns").div[1]
-        # cuisines = cus.div.div.text.strip('"').strip()
+        rap = soup.find("div", class_="rating_and_popularity")
+        cuisines = rap.find("span", class_="header_links").text.strip('"').strip()
     except AttributeError:
         cuisines = None
 
@@ -370,11 +366,11 @@ def scrape_attraction(url):
     except AttributeError:
         user_reviews = None
     try:
-        rec_duration = soup.find("div", class_="detail_section duration").text
+        rec_duration = soup.find("div", class_="detail_section duration").text.split(':')[1].strip()
     except AttributeError:
         rec_duration = None
     try:
-        description = soup.find("div", class_="description overflow")
+        description = soup.find("div", class_=["description", "overflow"])
         description = description.find("div", class_="text").text.strip('"')
     except AttributeError:
         description = None
@@ -383,9 +379,8 @@ def scrape_attraction(url):
     except AttributeError:
         price = None
     try:
-        keywords_container = soup.find("div", class_="tagcloud_wrapper").text.split("\n")  # Convert to a list
-        kwc = [w for w in keywords_container if w is not ""][1:]  # Remove first tag "all reviews" and empty strings
-        keywords = {w.split('"')[1]: w.split()[-2] for w in kwc}  # Seperate tag and count and put into dict
+        keywords_container = soup.find("div", class_=["tagcloud_wrapper","ui_tagcloud_group"]).text.split("\n")[1:]  # Convert to a list
+        keywords = {w.split('"')[1]: w.split()[-2] for w in keywords_container if w.strip()}  # Seperate tag and count and put into dict
     except AttributeError:
         keywords = None
 
@@ -400,8 +395,6 @@ def scrape_attraction(url):
                 break
 
     # Put data into a list and return it
-    ['Title', 'Rating', 'Review Count', 'Phone Number', 'Address', 'Locality', 'Country', 'Duration', 'Price', 'Description', 'User Reviews', 'Keywords', 'Date Generated']
-
     row = [title, rating, review_count, phone, address, local, country, rec_duration, price, description, user_reviews, keywords]
     return row
 
