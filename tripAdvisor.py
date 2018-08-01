@@ -1,22 +1,18 @@
 import os
 import sys
-import time
 from datetime import datetime
-from time import localtime, strftime
+from time import localtime, sleep, strftime
+from urllib import parse
 
 import pandas as pd
-# from pandas import DataFrame
 import requests
+import sqlalchemy
 from bs4 import BeautifulSoup
 
 from selenium import webdriver
-from selenium.common.exceptions import NoSuchElementException, WebDriverException
-# from selenium.webdriver.common.keys import Keys
+from selenium.common.exceptions import (NoSuchElementException,
+                                        WebDriverException)
 from selenium.webdriver.chrome.options import Options
-
-# from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
-# from selenium.webdriver.support import expected_conditions as EC
-# from selenium.webdriver.support.ui import WebDriverWait
 
 # Flag to shorten loop execution
 testing = True
@@ -33,20 +29,33 @@ headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/
 def script():
     print(strftime("Starting at %H:%M:%S", localtime()))
 
+    # Get input
     if len(sys.argv) < 2:
         input_list = ['singapore']
     else:
         input_list = sys.argv[1:]
-
     queries = [s.capitalize() for s in input_list]
     print("Searching: [" + ", ".join(queries), end="]\n")
+
+    # Set up
+    genres = ['Hotels', 'Resturants', 'Attractions']
     if testing:
-        print("Testing Enabled".center(80,'-'), end="")
+        print("Testing Enabled".center(80, '-'), end="")
     try:
         os.remove("geckodriver.log")
     except OSError:
         pass
-    genres = ['Hotels', 'Resturants', 'Attractions']
+
+
+    # Create sqlalchemy engine for connecting sql server
+    try:
+        quoted = parse.quote_plus('DRIVER={};Server={};Database={};UID={};PWD={};TDS_Version=8.0;Port=1433;'.format("ODBC Driver 13 for SQL Server", "sql-stg-sc-travel.civfwvdbx0g6.ap-southeast-1.rds.amazonaws.com", "tripAdvisor", "traveltomo", "traveltomo123"))
+        engine = sqlalchemy.create_engine('mssql+pyodbc:///?odbc_connect={}'.format(quoted))
+    except Exception as e:
+        print("\nFailed to connect to sql server\n",e)
+        exit()
+
+
     for place in queries:
         try:
             folder_path = os.path.join("data", place)
@@ -57,8 +66,52 @@ def script():
         for i, genre in enumerate(genres):
             root_path = place + "_" + genre + "_data.csv"
             filepath = os.path.join(os.path.abspath(folder_path), root_path)
-            dfs[i].to_csv(path_or_buf=filepath)  # , columns=column_titles)
-            print(strftime("Finished {} at %H:%M:%S\n".format(genre), localtime()))
+            dfs[i].to_csv(path_or_buf=filepath)
+
+        # Append collected data to the table for Hotels, Resturants, and Attractions respectively
+        dfs[0].to_sql("Hotels", con=engine, if_exists="append", index=False,
+                        dtype={"Title": sqlalchemy.types.VARCHAR(255),
+                                "Rating": sqlalchemy.types.DECIMAL(1, 1),
+                                "Review Count": sqlalchemy.types.INT,
+                                "Phone Number":sqlalchemy.types.VARCHAR(255),
+                                "Address": sqlalchemy.types.VARCHAR(255),
+                                "Locality": sqlalchemy.types.VARCHAR(255),
+                                "Country": sqlalchemy.types.VARCHAR(255),
+                                "Stars": sqlalchemy.types.VARCHAR(25),
+                                "User Reviews" : sqlalchemy.types.TEXT,
+                                "Keywords" : sqlalchemy.types.TEXT,
+                                "Date Generated": sqlalchemy.types.TIMESTAMP
+                                })
+
+        dfs[1].to_sql("Resturants", con=engine, if_exists="append", index=False,
+                        dtype={"Title": sqlalchemy.types.VARCHAR(255),
+                                "Rating": sqlalchemy.types.DECIMAL(1, 1),
+                                "Review Count": sqlalchemy.types.INT,
+                                "Phone Number":sqlalchemy.types.VARCHAR(255),
+                                "Address": sqlalchemy.types.VARCHAR(255),
+                                "Locality": sqlalchemy.types.VARCHAR(255),
+                                "Country": sqlalchemy.types.VARCHAR(255),
+                                "Cusines" : sqlalchemy.types.VARCHAR(255),
+                                "Date Generated": sqlalchemy.types.TIMESTAMP
+                                })
+
+        dfs[2].to_sql("Attractions", con=engine, if_exists="append", index=False,
+                        dtype={"Title": sqlalchemy.types.VARCHAR(255),
+                                "Rating": sqlalchemy.types.DECIMAL(1, 1),
+                                "Review Count": sqlalchemy.types.INT,
+                                "Phone Number":sqlalchemy.types.VARCHAR(255),
+                                "Address": sqlalchemy.types.VARCHAR(255),
+                                "Locality": sqlalchemy.types.VARCHAR(255),
+                                "Country": sqlalchemy.types.VARCHAR(255),
+                                "Suggested Duration": sqlalchemy.types.VARCHAR(255),
+                                "Price": sqlalchemy.types.VARCHAR(25),
+                                "Description" : sqlalchemy.types.TEXT,
+                                "User Reviews" : sqlalchemy.types.TEXT,
+                                "Keywords" : sqlalchemy.types.TEXT,
+                                "Date Generated": sqlalchemy.types.TIMESTAMP
+                                })
+
+    print(strftime("Finished at %H:%M:%S\n", localtime()))
 
 
 def search(query):
@@ -72,8 +125,7 @@ def search(query):
         chrome_options.add_argument('--ignore-ssl-errors')
         driver = webdriver.Chrome(chrome_options=chrome_options)
         # os.environ['MOZ_HEADLESS'] = '1'
-        # binary = FirefoxBinary('C:\\Program Files\\Mozilla Firefox\\firefox.exe', log_file=sys.stdout)
-        # driver = webdriver.Firefox(firefox_binary=binary)
+        # driver = webdriver.Firefox()
         driver.set_page_load_timeout(10)
 
         # Navigate to trip TripAdvisor, starting with hotels
@@ -109,7 +161,7 @@ def search(query):
 
 
 def get_data(driver, genre, max_pages=5):
-    time.sleep(1)
+    sleep(1)
     try:
         outersoup = BeautifulSoup(driver.page_source, 'html5lib')
         pagelinks = outersoup.find("div", class_="pageNumbers")
@@ -127,7 +179,7 @@ def get_data(driver, genre, max_pages=5):
     date_gen = datetime.today().replace(microsecond=0)
 
     for page in range(max_pages):
-        time.sleep(1)
+        sleep(1)
         soup = BeautifulSoup(driver.page_source, 'html5lib')
         if genre is "Hotels":
             results = soup.find("div", class_="relWrap")
@@ -228,7 +280,7 @@ def scrape_hotel(url):
         user_reviews = None
 
     try:
-        keywords_container = soup.find("div", class_=["prw_rup prw_filters_tag_cloud","ui_tagcloud_group"]).text.split("\n")[1:]  # Convert to a list
+        keywords_container = soup.find("div", class_=["prw_rup prw_filters_tag_cloud", "ui_tagcloud_group"]).text.split("\n")[1:]  # Convert to a list
         keywords = {w.split('"')[1]: w.split()[-2] for w in keywords_container if w.strip()}  # Seperate tag and count and put into dict
     except AttributeError:
         keywords = None
@@ -290,17 +342,6 @@ def scrape_resturant(url):
         country = soup.find("span", class_="country-name").text
     except AttributeError:
         country = None
-    # try:
-    #     review_containers = soup.find_all("div", class_="review-container")
-    #     user_reviews = {ur.find("div", class_="info_text").text: ur.find("p", class_="partial_entry").text for ur in review_containers}
-    # except Exception:
-    #     user_reviews = None
-    # try:
-    #     keywords_container = soup.find("div", class_="ui_tagcloud_group").text.split("\n")  # Convert to a list
-    #     kwc = [w for w in keywords_container if w is not ""][1:]  # Remove first tag "all reviews" and empty strings
-    #     keywords = {w.split('"')[1]: w.split()[-2] for w in kwc}  # Seperate tag and count and put into dict
-    # except Exception:
-    #     keywords = None
     try:
         rap = soup.find("div", class_="rating_and_popularity")
         cuisines = rap.find("span", class_="header_links").text.strip('"').strip()
@@ -379,7 +420,7 @@ def scrape_attraction(url):
     except AttributeError:
         price = None
     try:
-        keywords_container = soup.find("div", class_=["tagcloud_wrapper","ui_tagcloud_group"]).text.split("\n")[1:]  # Convert to a list
+        keywords_container = soup.find("div", class_=["tagcloud_wrapper", "ui_tagcloud_group"]).text.split("\n")[1:]  # Convert to a list
         keywords = {w.split('"')[1]: w.split()[-2] for w in keywords_container if w.strip()}  # Seperate tag and count and put into dict
     except AttributeError:
         keywords = None
