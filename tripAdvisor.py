@@ -19,9 +19,9 @@ testing = True
 
 
 # Global variables
-column_titles_h = ['Title', 'Rating', 'Review Count', 'Phone Number', 'Address', 'Locality', 'Country', 'Stars', 'User Reviews', 'Keywords', 'Date Generated']
+column_titles_h = ['Title', 'Rating', 'Review Count', 'Phone Number', 'Address', 'Locality', 'Country', 'Stars', 'Keywords', 'Date Generated']
 column_titles_r = ['Title', 'Rating', 'Review Count', 'Phone Number', 'Address', 'Locality', 'Country', 'Cusines', 'Date Generated']
-column_titles_a = ['Title', 'Rating', 'Review Count', 'Phone Number', 'Address', 'Locality', 'Country', 'Suggested Duration', 'Price', 'Description', 'User Reviews', 'Keywords', 'Date Generated']
+column_titles_a = ['Title', 'Rating', 'Review Count', 'Phone Number', 'Address', 'Locality', 'Country', 'Suggested Duration', 'Price', 'Description', 'Keywords', 'Date Generated']
 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36'}
 # driver_path = os.path.normpath("C:\\Users\\Hayden\\Anaconda3\\selenium\\webdriver")
 
@@ -38,7 +38,7 @@ def script():
     print("Searching: [" + ", ".join(queries), end="]\n")
 
     # Set up
-    genres = ['Hotels', 'Resturants', 'Attractions']
+    # genres = 'Hotels', 'Resturants', 'Attractions'
     if testing:
         print("Testing Enabled".center(80, '-'), end="")
     try:
@@ -46,15 +46,13 @@ def script():
     except OSError:
         pass
 
-
     # Create sqlalchemy engine for connecting sql server
     try:
         quoted = parse.quote_plus('DRIVER={};Server={};Database={};UID={};PWD={};TDS_Version=8.0;Port=1433;'.format("ODBC Driver 13 for SQL Server", "sql-stg-sc-travel.civfwvdbx0g6.ap-southeast-1.rds.amazonaws.com", "tripAdvisor", "traveltomo", "traveltomo123"))
         engine = sqlalchemy.create_engine('mssql+pyodbc:///?odbc_connect={}'.format(quoted))
     except Exception as e:
-        print("\nFailed to connect to sql server\n",e)
+        print("\nFailed to connect to sql server\n", e)
         exit()
-
 
     for place in queries:
         try:
@@ -62,54 +60,57 @@ def script():
             os.mkdir(folder_path)
         except OSError:
             pass
-        dfs = list(search(place))
-        for i, genre in enumerate(genres):
-            root_path = place + "_" + genre + "_data.csv"
-            filepath = os.path.join(os.path.abspath(folder_path), root_path)
-            dfs[i].to_csv(path_or_buf=filepath)
+        hotels_df, resturants_df, attractions_df = search(place)
+        # for i, genre in enumerate(genres):
+        #     root_path = place + "_" + genre + "_data.csv"
+        #     filepath = os.path.join(os.path.abspath(folder_path), root_path)
+        #     try:
+        #         dfs[i].to_csv(path_or_buf=filepath)
+        #     except PermissionError:
+        #         pass
 
         # Append collected data to the table for Hotels, Resturants, and Attractions respectively
-        dfs[0].to_sql("Hotels", con=engine, if_exists="append", index=False,
-                        dtype={"Title": sqlalchemy.types.VARCHAR(255),
+        hotels_df.to_sql("Hotels", con=engine, if_exists="replace", index=False,
+                         dtype={"Title": sqlalchemy.types.VARCHAR(255),
                                 "Rating": sqlalchemy.types.DECIMAL(1, 1),
                                 "Review Count": sqlalchemy.types.INT,
-                                "Phone Number":sqlalchemy.types.VARCHAR(255),
+                                "Phone Number": sqlalchemy.types.VARCHAR(255),
                                 "Address": sqlalchemy.types.VARCHAR(255),
                                 "Locality": sqlalchemy.types.VARCHAR(255),
                                 "Country": sqlalchemy.types.VARCHAR(255),
                                 "Stars": sqlalchemy.types.VARCHAR(255),
-                                "User Reviews" : sqlalchemy.types.TEXT,
-                                "Keywords" : sqlalchemy.types.TEXT,
-                                "Date Generated": sqlalchemy.types.TIMESTAMP
+                                "User Reviews": sqlalchemy.types.TEXT,
+                                "Keywords": sqlalchemy.types.TEXT,
+                                "Date Generated": sqlalchemy.types.VARCHAR(255)
                                 })
 
-        dfs[1].to_sql("Resturants", con=engine, if_exists="append", index=False,
-                        dtype={"Title": sqlalchemy.types.VARCHAR(255),
-                                "Rating": sqlalchemy.types.DECIMAL(1, 1),
-                                "Review Count": sqlalchemy.types.INT,
-                                "Phone Number":sqlalchemy.types.VARCHAR(255),
-                                "Address": sqlalchemy.types.VARCHAR(255),
-                                "Locality": sqlalchemy.types.VARCHAR(255),
-                                "Country": sqlalchemy.types.VARCHAR(255),
-                                "Cusines" : sqlalchemy.types.VARCHAR(255),
-                                "Date Generated": sqlalchemy.types.TIMESTAMP
-                                })
+        resturants_df.to_sql("Resturants", con=engine, if_exists="replace", index=False,
+                             dtype={"Title": sqlalchemy.types.VARCHAR(255),
+                                    "Rating": sqlalchemy.types.DECIMAL(1, 1),
+                                    "Review Count": sqlalchemy.types.INT,
+                                    "Phone Number": sqlalchemy.types.VARCHAR(255),
+                                    "Address": sqlalchemy.types.VARCHAR(255),
+                                    "Locality": sqlalchemy.types.VARCHAR(255),
+                                    "Country": sqlalchemy.types.VARCHAR(255),
+                                    "Cusines": sqlalchemy.types.VARCHAR(255),
+                                    "Date Generated": sqlalchemy.types.VARCHAR(255)
+                                    })
 
-        dfs[2].to_sql("Attractions", con=engine, if_exists="append", index=False,
-                        dtype={"Title": sqlalchemy.types.VARCHAR(255),
-                                "Rating": sqlalchemy.types.DECIMAL(1, 1),
-                                "Review Count": sqlalchemy.types.INT,
-                                "Phone Number":sqlalchemy.types.VARCHAR(255),
-                                "Address": sqlalchemy.types.VARCHAR(255),
-                                "Locality": sqlalchemy.types.VARCHAR(255),
-                                "Country": sqlalchemy.types.VARCHAR(255),
-                                "Suggested Duration": sqlalchemy.types.VARCHAR(255),
-                                "Price": sqlalchemy.types.VARCHAR(25),
-                                "Description" : sqlalchemy.types.TEXT,
-                                "User Reviews" : sqlalchemy.types.TEXT,
-                                "Keywords" : sqlalchemy.types.TEXT,
-                                "Date Generated": sqlalchemy.types.TIMESTAMP
-                                })
+        attractions_df.to_sql("Attractions", con=engine, if_exists="replace", index=False,
+                              dtype={"Title": sqlalchemy.types.VARCHAR(255),
+                                     "Rating": sqlalchemy.types.DECIMAL(1, 1),
+                                     "Review Count": sqlalchemy.types.INT,
+                                     "Phone Number": sqlalchemy.types.VARCHAR(255),
+                                     "Address": sqlalchemy.types.VARCHAR(255),
+                                     "Locality": sqlalchemy.types.VARCHAR(255),
+                                     "Country": sqlalchemy.types.VARCHAR(255),
+                                     "Suggested Duration": sqlalchemy.types.VARCHAR(255),
+                                     "Price": sqlalchemy.types.VARCHAR(25),
+                                     "Description": sqlalchemy.types.TEXT,
+                                     "User Reviews": sqlalchemy.types.TEXT,
+                                     "Keywords": sqlalchemy.types.TEXT,
+                                     "Date Generated": sqlalchemy.types.VARCHAR(255)
+                                     })
 
     print(strftime("Finished at %H:%M:%S\n", localtime()))
 
@@ -154,9 +155,10 @@ def search(query):
         a_df = pd.DataFrame(data3, columns=list(column_titles_a))
 
         driver.quit()
-    except WebDriverException:
+    except WebDriverException as e:
         print("\nFatal Error, quiting...")
         driver.quit()
+        print(e)
         quit()
     return h_df, r_df, a_df
 
@@ -168,72 +170,72 @@ def get_data(driver, genre, max_pages=5):
         pagelinks = outersoup.find("div", class_="pageNumbers")
         total_pages = pagelinks.find_all("a")[-1]
         max_pages = int(total_pages.text)
-        print("Found {} pages of {}.".format(str(max_pages), genre))
+        print("Found {} pages of {}".format(str(max_pages), genre))
     except Exception as e:
-        print("Can't tell how many pages there are, searching", max_pages, "-", e)
+        print("Can't tell how many pages there are, searching", max_pages, ":", e)
 
     # Temporary #
     if testing:
         max_pages = 2
 
-    data = []
     date_gen = datetime.today().replace(microsecond=0)
-
-    for page in range(max_pages):
-        sleep(1)
-        soup = BeautifulSoup(driver.page_source, 'html5lib')
-        if genre is "Hotels":
-            results = soup.find("div", class_="relWrap")
-            partials = results.find_all("div", class_="listing_title")
-
-        elif genre is "Resturants":
-            results = soup.find("div", id="EATERY_SEARCH_RESULTS")
-            places = results.find_all("div", class_="listing")
-            partials = [p.find("div", class_="title") for p in places]
-
-        else:
-            results = soup.find("div", id="FILTERED_LIST")
-            partials = results.find_all("div", class_="listing_title")
-
-        links = []
-        for p in partials:
+    data = []
+    try:
+        for page in range(max_pages):
+            sleep(1)
             try:
-                if "http" not in p.a['href']:
-                    links.append("https://www.tripadvisor.com" + p.a['href'])
-                else:
-                    links.append(p.a['href'])
-            except AttributeError:
-                continue
-        print(f"Found {len(links)} links on page {page+1}/{max_pages} =>", end="")
+                nb = driver.find_elements_by_xpath("//*[contains(text(), 'Next')]")[-1]
+                next_page_loc = nb.get_attribute('href')
+            except IndexError:
+                next_page_loc = ""
 
-        # driver.minimize_window()
-        for i, link in enumerate(links):
-            if i > 5 and testing:
-                break
-            newrow = scrape_article(link, genre)
-            newrow.append(date_gen)
-            data.append(newrow)
-        print()
+            soup = BeautifulSoup(driver.page_source, 'html5lib')
+            if genre is "Hotels":
+                results = soup.find("div", class_="relWrap")
+                partials = results.find_all("div", class_="listing_title")
 
-        try:
-            nb = driver.find_elements_by_xpath("//*[contains(text(), 'Next')]")[-1]
+            elif genre is "Resturants":
+                results = soup.find("div", id="EATERY_SEARCH_RESULTS")
+                places = results.find_all("div", class_="listing")
+                partials = [p.find("div", class_="title") for p in places]
+
+            else:
+                results = soup.find("div", id="FILTERED_LIST")
+                partials = results.find_all("div", class_="listing_title")
+
+            links = []
+            for p in partials:
+                try:
+                    if "http" not in p.a['href']:
+                        links.append("https://www.tripadvisor.com" + p.a['href'])
+                    else:
+                        links.append(p.a['href'])
+                except AttributeError:
+                    continue
+            print(f"Found {len(links)} links on page {page+1}/{max_pages} =>", end="")
+
+            # driver.minimize_window()
+            for i, link in enumerate(links):
+                if i == 1 and testing:
+                    break
+                newrow = scrape_article(link, genre)
+                newrow.append(date_gen)
+                data.append(newrow)
+            print()
+
             try:
-                driver.get(nb.get_attribute('href'))
+                driver.get(next_page_loc)
             except Exception as e:
                 print("Failed to go past page {}/{} (Could not click next)".format(page + 1, max_pages))
                 print(e)
                 print("href:", nb.get_attribute('href'))
                 print(nb)
                 break
-            # page_nav_links = outersoup.find("div", class_=["unified", "pagination"]).find_all("a")
-            # next_page = page_nav_links[1].get("href")
-            # next_page = "https://www.tripadvisor.com/" + str(next_page)
-            # driver.get(next_page)
-        except Exception as e:
-            print("Failed to go past page {}/{} ({})".format(page + 1, max_pages, e))
-            raise
-    print("\nDone with", genre)
-    # driver.maximize_window()
+
+        print("\nDone with", genre)
+        # driver.maximize_window()
+    except Exception as e:
+        print("STOPPING EARLY BC:", e)
     return data
 
 
@@ -275,11 +277,11 @@ def scrape_hotel(url):
         country = soup.find("span", class_="country-name").text
     except AttributeError:
         country = None
-    try:
-        review_containers = soup.find_all("div", class_="review-container")
-        user_reviews = {ur.find("div", class_="info_text").text: ur.find("p", class_="partial_entry").text for ur in review_containers}
-    except AttributeError:
-        user_reviews = None
+    # try:
+    #     review_containers = soup.find_all("div", class_="review-container")
+    #     user_reviews = {ur.find("div", class_="info_text").text: ur.find("p", class_="partial_entry").text for ur in review_containers}
+    # except AttributeError:
+    #     user_reviews = None
 
     try:
         keywords_container = soup.find("div", class_=["prw_rup prw_filters_tag_cloud", "ui_tagcloud_group"]).text.split("\n")[1:]  # Convert to a list
@@ -302,7 +304,7 @@ def scrape_hotel(url):
                 break
 
     # Put data into a list and return it
-    row = [title, rating, review_count, phone, address, local, country, star_count, user_reviews, keywords]
+    row = [title, rating, review_count, phone, address, local, country, star_count, str(keywords)]
     return row
 
 
@@ -403,11 +405,11 @@ def scrape_attraction(url):
         country = soup.find("span", class_="country-name").text
     except AttributeError:
         country = None
-    try:
-        review_containers = soup.find_all("div", class_="review-container")
-        user_reviews = {ur.find("div", class_="info_text").text: ur.find("p", class_="partial_entry").text for ur in review_containers}
-    except AttributeError:
-        user_reviews = None
+    # try:
+    #     review_containers = soup.find_all("div", class_="review-container")
+    #     user_reviews = {ur.find("div", class_="info_text").text: ur.find("p", class_="partial_entry").text for ur in review_containers}
+    # except AttributeError:
+    #     user_reviews = None
     try:
         rec_duration = soup.find("div", class_="detail_section duration").text.split(':')[1].strip()
     except AttributeError:
@@ -438,7 +440,7 @@ def scrape_attraction(url):
                 break
 
     # Put data into a list and return it
-    row = [title, rating, review_count, phone, address, local, country, rec_duration, price, description, user_reviews, keywords]
+    row = [title, rating, review_count, phone, address, local, country, rec_duration, price, description, str(keywords)]
     return row
 
 
