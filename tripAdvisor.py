@@ -71,45 +71,45 @@ def script():
 
         # Append collected data to the table for Hotels, Resturants, and Attractions respectively
         hotels_df.to_sql("Hotels", con=engine, if_exists="replace", index=False,
-                         dtype={"Title": sqlalchemy.types.VARCHAR(255),
-                                "Rating": sqlalchemy.types.DECIMAL(1, 1),
-                                "Review Count": sqlalchemy.types.INT,
-                                "Phone Number": sqlalchemy.types.VARCHAR(255),
-                                "Address": sqlalchemy.types.VARCHAR(255),
-                                "Locality": sqlalchemy.types.VARCHAR(255),
-                                "Country": sqlalchemy.types.VARCHAR(255),
-                                "Stars": sqlalchemy.types.VARCHAR(255),
-                                "User Reviews": sqlalchemy.types.TEXT,
-                                "Keywords": sqlalchemy.types.TEXT,
-                                "Date Generated": sqlalchemy.types.VARCHAR(255)
+                         dtype={"Title": sqlalchemy.types.NVARCHAR(200),
+                                "Rating": sqlalchemy.types.NVARCHAR(200),
+                                "Review Count": sqlalchemy.types.NVARCHAR(200),
+                                "Phone Number": sqlalchemy.types.NVARCHAR(200),
+                                "Address": sqlalchemy.types.NVARCHAR(200),
+                                "Locality": sqlalchemy.types.NVARCHAR(200),
+                                "Country": sqlalchemy.types.NVARCHAR(200),
+                                "Stars": sqlalchemy.types.NVARCHAR(255),
+                                "User Reviews": sqlalchemy.types.NVARCHAR(200),
+                                "Keywords": sqlalchemy.types.NVARCHAR(200),
+                                "Date Generated": sqlalchemy.types.NVARCHAR(200)
                                 })
 
         resturants_df.to_sql("Resturants", con=engine, if_exists="replace", index=False,
-                             dtype={"Title": sqlalchemy.types.VARCHAR(255),
-                                    "Rating": sqlalchemy.types.DECIMAL(1, 1),
-                                    "Review Count": sqlalchemy.types.INT,
-                                    "Phone Number": sqlalchemy.types.VARCHAR(255),
-                                    "Address": sqlalchemy.types.VARCHAR(255),
-                                    "Locality": sqlalchemy.types.VARCHAR(255),
-                                    "Country": sqlalchemy.types.VARCHAR(255),
-                                    "Cusines": sqlalchemy.types.VARCHAR(255),
-                                    "Date Generated": sqlalchemy.types.VARCHAR(255)
+                             dtype={"Title": sqlalchemy.types.NVARCHAR(200),
+                                    "Rating": sqlalchemy.types.NVARCHAR(200),
+                                    "Review Count": sqlalchemy.types.NVARCHAR(200),
+                                    "Phone Number": sqlalchemy.types.NVARCHAR(200),
+                                    "Address": sqlalchemy.types.NVARCHAR(200),
+                                    "Locality": sqlalchemy.types.NVARCHAR(200),
+                                    "Country": sqlalchemy.types.NVARCHAR(200),
+                                    "Cusines": sqlalchemy.types.NVARCHAR(200),
+                                    "Date Generated": sqlalchemy.types.NVARCHAR(200)
                                     })
 
         attractions_df.to_sql("Attractions", con=engine, if_exists="replace", index=False,
-                              dtype={"Title": sqlalchemy.types.VARCHAR(255),
-                                     "Rating": sqlalchemy.types.DECIMAL(1, 1),
-                                     "Review Count": sqlalchemy.types.INT,
-                                     "Phone Number": sqlalchemy.types.VARCHAR(255),
-                                     "Address": sqlalchemy.types.VARCHAR(255),
-                                     "Locality": sqlalchemy.types.VARCHAR(255),
-                                     "Country": sqlalchemy.types.VARCHAR(255),
-                                     "Suggested Duration": sqlalchemy.types.VARCHAR(255),
-                                     "Price": sqlalchemy.types.VARCHAR(25),
-                                     "Description": sqlalchemy.types.TEXT,
-                                     "User Reviews": sqlalchemy.types.TEXT,
-                                     "Keywords": sqlalchemy.types.TEXT,
-                                     "Date Generated": sqlalchemy.types.VARCHAR(255)
+                              dtype={"Title": sqlalchemy.types.NVARCHAR(200),
+                                     "Rating": sqlalchemy.types.NVARCHAR(200),
+                                     "Review Count": sqlalchemy.types.NVARCHAR(200),
+                                     "Phone Number": sqlalchemy.types.NVARCHAR(200),
+                                     "Address": sqlalchemy.types.NVARCHAR(200),
+                                     "Locality": sqlalchemy.types.NVARCHAR(200),
+                                     "Country": sqlalchemy.types.NVARCHAR(200),
+                                     "Suggested Duration": sqlalchemy.types.NVARCHAR(200),
+                                     "Price": sqlalchemy.types.NVARCHAR(200),
+                                     "Description": sqlalchemy.types.NVARCHAR(200),
+                                     "User Reviews": sqlalchemy.types.NVARCHAR(200),
+                                     "Keywords": sqlalchemy.types.NVARCHAR(200),
+                                     "Date Generated": sqlalchemy.types.NVARCHAR(200)
                                      })
 
     print(strftime("Finished at %H:%M:%S\n", localtime()))
