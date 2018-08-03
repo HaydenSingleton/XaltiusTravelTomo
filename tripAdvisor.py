@@ -1,7 +1,7 @@
 import os
 import sys
 from datetime import datetime
-from time import localtime, sleep, strftime
+import time
 from urllib import parse
 
 import pandas as pd
@@ -14,8 +14,9 @@ from selenium.common.exceptions import (NoSuchElementException,
                                         WebDriverException)
 from selenium.webdriver.chrome.options import Options
 
-# Flag to shorten loop execution
-testing = True
+
+testing = False  # Flag to shorten loop execution
+test_length = 2  # Number of pages and links per page to search during testing
 
 
 # Global variables
@@ -26,8 +27,8 @@ headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/
 # driver_path = os.path.normpath("C:\\Users\\Hayden\\Anaconda3\\selenium\\webdriver")
 
 
-def script():
-    print(strftime("Starting at %H:%M:%S", localtime()))
+def main():
+    print(time.strftime("Starting at %H:%M:%S", time.localtime()))
 
     # Get input
     if len(sys.argv) < 2:
@@ -112,7 +113,7 @@ def script():
                                      "Date Generated": sqlalchemy.types.NVARCHAR(200)
                                      })
 
-    print(strftime("Finished at %H:%M:%S\n", localtime()))
+    print(time.strftime("Finished at %H:%M:%S\n", time.localtime()))
 
 
 def search(query):
@@ -163,8 +164,8 @@ def search(query):
     return h_df, r_df, a_df
 
 
-def get_data(driver, genre, max_pages=5):
-    sleep(1)
+def get_data(driver, genre, max_pages=30):
+    time.sleep(1)
     try:
         outersoup = BeautifulSoup(driver.page_source, 'html5lib')
         pagelinks = outersoup.find("div", class_="pageNumbers")
@@ -176,13 +177,13 @@ def get_data(driver, genre, max_pages=5):
 
     # Temporary #
     if testing:
-        max_pages = 2
+        max_pages = test_length
 
     date_gen = datetime.today().replace(microsecond=0)
     data = []
     try:
         for page in range(max_pages):
-            sleep(1)
+            time.sleep(2)
             try:
                 nb = driver.find_elements_by_xpath("//*[contains(text(), 'Next')]")[-1]
                 next_page_loc = nb.get_attribute('href')
@@ -216,9 +217,14 @@ def get_data(driver, genre, max_pages=5):
 
             # driver.minimize_window()
             for i, link in enumerate(links):
-                if i == 1 and testing:
+                if (i == test_length) and testing:
                     break
-                newrow = scrape_article(link, genre)
+                time.sleep(1)
+                try:
+                    newrow = scrape_article(link, genre)
+                except StopIteration:
+                    continue
+
                 newrow.append(date_gen)
                 data.append(newrow)
             print()
@@ -229,21 +235,19 @@ def get_data(driver, genre, max_pages=5):
                 print("Failed to go past page {}/{} (Could not click next)".format(page + 1, max_pages))
                 print(e)
                 print("href:", nb.get_attribute('href'))
+                print("next_page_link:", next_page_loc, type(next_page_loc))
                 print(nb)
                 break
 
         print("\nDone with", genre)
         # driver.maximize_window()
     except Exception as e:
-        print("STOPPING EARLY BC:", e)
+        print("STOPPING EARLY BC:", e, e.__class__)
     return data
 
 
-def scrape_hotel(url):
+def scrape_hotel(url, soup):
     print(".", end="", flush=True)
-    # headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36'}
-    soup = BeautifulSoup(requests.get(url, headers=headers).text, 'html5lib')
-
     # Scrape data, filling missing values with None
     try:
         title = soup.find('h1', id='HEADING').text
@@ -308,11 +312,8 @@ def scrape_hotel(url):
     return row
 
 
-def scrape_resturant(url):
+def scrape_resturant(url, soup):
     print(".", end="", flush=True)
-    # headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36'}
-    soup = BeautifulSoup(requests.get(url, headers=headers).text, 'html5lib')
-
     # Scrape data, filling missing values with None
     try:
         title = soup.find('h1', id='HEADING').text
@@ -367,11 +368,8 @@ def scrape_resturant(url):
     return row
 
 
-def scrape_attraction(url):
+def scrape_attraction(url, soup):
     print(".", end="", flush=True)
-    # headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36'}
-    soup = BeautifulSoup(requests.get(url, headers=headers).text, 'html5lib')
-
     # Scrape data, filling missing values with None
     try:
         title = soup.find('h1', id='HEADING').text
@@ -446,17 +444,25 @@ def scrape_attraction(url):
 
 # Implementation of a switch case to call the correct scraping function
 def scrape_article(url, genre):
+    try:
+        soup = BeautifulSoup(requests.get(url, headers=headers).text, 'html5lib')
+    except ConnectionError:
+        print("Connection error".center(80, '='))
+        time.sleep(10)
+        try:
+            soup = BeautifulSoup(requests.get(url, headers=headers).text, 'html5lib')
+        except ConnectionError:
+            time.sleep(10)
+            raise StopIteration
+            # Script is being blocked, wait and then raise and error back in get_data function
+
     switch = {
         "Hotels": scrape_hotel,
         "Resturants": scrape_resturant,
         "Attractions": scrape_attraction
     }
     func = switch.get(genre, lambda input: print("Invalid genre"))
-    return func(url)
-
-
-def main():
-    script()
+    return func(url, soup)
 
 
 if __name__ == '__main__':
