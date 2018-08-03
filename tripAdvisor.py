@@ -1,246 +1,252 @@
 import os
 import sys
-import time
 from datetime import datetime
-from time import localtime, strftime
+import time
+from urllib import parse
 
 import pandas as pd
-# from pandas import DataFrame
 import requests
+import sqlalchemy
 from bs4 import BeautifulSoup
 
 from selenium import webdriver
-from selenium.common.exceptions import NoSuchElementException
-# from selenium.webdriver.common.keys import Keys
+from selenium.common.exceptions import (NoSuchElementException,
+                                        WebDriverException)
 from selenium.webdriver.chrome.options import Options
 
-# from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
-# from selenium.webdriver.support import expected_conditions as EC
-# from selenium.webdriver.support.ui import WebDriverWait
+
+testing = False  # Flag to shorten loop execution
+test_length = 2  # Number of pages and links per page to search during testing
+
 
 # Global variables
-column_titles_h = ['Title', 'Rating', 'Review Count', 'Phone Number', 'Address', 'Locality', 'Country', 'Stars', 'User Reviews', 'Keywords', 'Date Generated']
+column_titles_h = ['Title', 'Rating', 'Review Count', 'Phone Number', 'Address', 'Locality', 'Country', 'Stars', 'Keywords', 'Date Generated']
 column_titles_r = ['Title', 'Rating', 'Review Count', 'Phone Number', 'Address', 'Locality', 'Country', 'Cusines', 'Date Generated']
-column_titles_a = ['Title', 'Rating', 'Review Count', 'Phone Number', 'Address', 'Locality', 'Country', 'Duration' ,'Price', 'Description', 'User Reviews', 'Keywords', 'Date Generated']
-
+column_titles_a = ['Title', 'Rating', 'Review Count', 'Phone Number', 'Address', 'Locality', 'Country', 'Suggested Duration', 'Price', 'Description', 'Keywords', 'Date Generated']
 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36'}
 # driver_path = os.path.normpath("C:\\Users\\Hayden\\Anaconda3\\selenium\\webdriver")
 
 
-def script():
-    print(strftime("Starting at %H:%M:%S", localtime()))
+def main():
+    print(time.strftime("Starting at %H:%M:%S", time.localtime()))
 
+    # Get input
     if len(sys.argv) < 2:
         input_list = ['singapore']
     else:
         input_list = sys.argv[1:]
-
     queries = [s.capitalize() for s in input_list]
-    print("Searching: [" + ", ".join(queries), end="]")
+    print("Searching: [" + ", ".join(queries), end="]\n")
 
+    # Set up
+    # genres = 'Hotels', 'Resturants', 'Attractions'
+    if testing:
+        print("Testing Enabled".center(80, '-'), end="")
     try:
         os.remove("geckodriver.log")
     except OSError:
         pass
-    genres = ['Hotels', 'Resturants', 'Attractions']
+
+    # Create sqlalchemy engine for connecting sql server
+    try:
+        quoted = parse.quote_plus('DRIVER={};Server={};Database={};UID={};PWD={};TDS_Version=8.0;Port=1433;'.format("ODBC Driver 13 for SQL Server", "sql-stg-sc-travel.civfwvdbx0g6.ap-southeast-1.rds.amazonaws.com", "tripAdvisor", "traveltomo", "traveltomo123"))
+        engine = sqlalchemy.create_engine('mssql+pyodbc:///?odbc_connect={}'.format(quoted))
+    except Exception as e:
+        print("\nFailed to connect to sql server\n", e)
+        exit()
+
     for place in queries:
-        try:
-            folder_path = os.path.join("data", place)
-            os.mkdir(folder_path)
-        except OSError:
-            pass
-        dfs = list(search(place))
-        for i, genre in enumerate(genres):
-            root_path = place + "_" + genre + "_data.csv"
-            filepath = os.path.join(os.path.abspath(folder_path), root_path)
-            dfs[i].to_csv(path_or_buf=filepath, index_label="Index")  # , columns=column_titles)
-        print(strftime("\nFinished {} at %H:%M:%S\n".format(genre), localtime()))
+        # try:
+        #     folder_path = os.path.join("data", place)
+        #     os.mkdir(folder_path)
+        # except OSError:
+        #     pass
+        hotels_df, resturants_df, attractions_df = search(place)
+        # for i, genre in enumerate(genres):
+        #     root_path = place + "_" + genre + "_data.csv"
+        #     filepath = os.path.join(os.path.abspath(folder_path), root_path)
+        #     try:
+        #         dfs[i].to_csv(path_or_buf=filepath)
+        #     except PermissionError:
+        #         pass
+
+        # Append collected data to the table for Hotels, Resturants, and Attractions respectively
+        hotels_df.to_sql("Hotels", con=engine, if_exists="replace", index=False,
+                         dtype={"Title": sqlalchemy.types.NVARCHAR(200),
+                                "Rating": sqlalchemy.types.NVARCHAR(200),
+                                "Review Count": sqlalchemy.types.NVARCHAR(200),
+                                "Phone Number": sqlalchemy.types.NVARCHAR(200),
+                                "Address": sqlalchemy.types.NVARCHAR(200),
+                                "Locality": sqlalchemy.types.NVARCHAR(200),
+                                "Country": sqlalchemy.types.NVARCHAR(200),
+                                "Stars": sqlalchemy.types.NVARCHAR(255),
+                                "User Reviews": sqlalchemy.types.NVARCHAR(200),
+                                "Keywords": sqlalchemy.types.NVARCHAR(200),
+                                "Date Generated": sqlalchemy.types.NVARCHAR(200)
+                                })
+
+        resturants_df.to_sql("Resturants", con=engine, if_exists="replace", index=False,
+                             dtype={"Title": sqlalchemy.types.NVARCHAR(200),
+                                    "Rating": sqlalchemy.types.NVARCHAR(200),
+                                    "Review Count": sqlalchemy.types.NVARCHAR(200),
+                                    "Phone Number": sqlalchemy.types.NVARCHAR(200),
+                                    "Address": sqlalchemy.types.NVARCHAR(200),
+                                    "Locality": sqlalchemy.types.NVARCHAR(200),
+                                    "Country": sqlalchemy.types.NVARCHAR(200),
+                                    "Cusines": sqlalchemy.types.NVARCHAR(200),
+                                    "Date Generated": sqlalchemy.types.NVARCHAR(200)
+                                    })
+
+        attractions_df.to_sql("Attractions", con=engine, if_exists="replace", index=False,
+                              dtype={"Title": sqlalchemy.types.NVARCHAR(200),
+                                     "Rating": sqlalchemy.types.NVARCHAR(200),
+                                     "Review Count": sqlalchemy.types.NVARCHAR(200),
+                                     "Phone Number": sqlalchemy.types.NVARCHAR(200),
+                                     "Address": sqlalchemy.types.NVARCHAR(200),
+                                     "Locality": sqlalchemy.types.NVARCHAR(200),
+                                     "Country": sqlalchemy.types.NVARCHAR(200),
+                                     "Suggested Duration": sqlalchemy.types.NVARCHAR(200),
+                                     "Price": sqlalchemy.types.NVARCHAR(200),
+                                     "Description": sqlalchemy.types.NVARCHAR(200),
+                                     "User Reviews": sqlalchemy.types.NVARCHAR(200),
+                                     "Keywords": sqlalchemy.types.NVARCHAR(200),
+                                     "Date Generated": sqlalchemy.types.NVARCHAR(200)
+                                     })
+
+    print(time.strftime("Finished at %H:%M:%S\n", time.localtime()))
 
 
 def search(query):
-    print("\nBeginning search in", query)
-    # Set up browser
-    chrome_options = Options()
-    chrome_options.add_argument('--log-level=3')
-    chrome_options.add_argument('--ignore-certificate-errors')
-    chrome_options.add_argument('--ignore-ssl-errors')
-    driver = webdriver.Chrome(chrome_options=chrome_options)
-    # os.environ['MOZ_HEADLESS'] = '1'
-    # binary = FirefoxBinary('C:\\Program Files\\Mozilla Firefox\\firefox.exe', log_file=sys.stdout)
-    # driver = webdriver.Firefox(firefox_binary=binary)
-    driver.set_page_load_timeout(10)
-
-    # Navigate to trip TripAdvisor, starting with hotels
-    main_url = "https://www.tripadvisor.com/Hotels"
-    # This should redirect to the correct local domain as needed (ex- .com.sg) AFAIK
-    driver.get(main_url)
+    h_df, r_df, a_df = pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
     try:
-        driver.find_element_by_id("global-nav-hotels").click()
-    except NoSuchElementException as e:
+        print("\nBeginning search in", query)
+        # Set up browser
+        chrome_options = Options()
+        chrome_options.add_argument('--log-level=3')
+        chrome_options.add_argument('--ignore-certificate-errors')
+        chrome_options.add_argument('--ignore-ssl-errors')
+        driver = webdriver.Chrome(chrome_options=chrome_options)
+        # os.environ['MOZ_HEADLESS'] = '1'
+        # driver = webdriver.Firefox()
+        driver.set_page_load_timeout(10)
+
+        # Navigate to trip TripAdvisor, starting with hotels
+        main_url = "https://www.tripadvisor.com/Hotels"
+        # This should redirect to the correct local domain as needed (ex- .com.sg) AFAIK
+        try:
+            driver.get(main_url)
+            driver.find_element_by_id("global-nav-hotels").click()
+        except NoSuchElementException:
+            driver.quit()
+            print("Unable to access website")
+            print("Are you connected to internet ?")
+            exit(0)
+        driver.find_element_by_class_name("typeahead_input").send_keys(query)
+        driver.find_element_by_class_name("submit_text").click()
+
+        data = get_data(driver, "Hotels")
+        h_df = pd.DataFrame(data, columns=list(column_titles_h))
+
+        driver.find_element_by_id("global-nav-restaurants").click()
+        data2 = get_data(driver, "Resturants")
+        r_df = pd.DataFrame(data2, columns=list(column_titles_r))
+
+        driver.find_element_by_id("global-nav-attractions").click()
+        data3 = get_data(driver, "Attractions")
+        a_df = pd.DataFrame(data3, columns=list(column_titles_a))
+
         driver.quit()
-        print("Are you connected to internet ?")
+    except Exception as e:
+        print("\nFatal Error, quiting...")
+        driver.quit()
         print(e)
-        exit(0)
-    driver.find_element_by_class_name("typeahead_input").send_keys(query)
-    driver.find_element_by_class_name("submit_text").click()
-    time.sleep(1)
-
-    data = get_data(driver, "Hotels")
-    h_df = pd.DataFrame(data, columns=list(column_titles_h))
-
-    driver.find_element_by_id("global-nav-restaurants").click()
-    data2 = get_data(driver, "Resturants")
-    r_df = pd.DataFrame(data2, columns=list(column_titles_r))
-
-    driver.find_element_by_id("global-nav-attractions").click()
-    data3 = get_data(driver, "Attractions")
-    a_df = pd.DataFrame(data3, columns=list(column_titles_a))
-
-    driver.quit()
     return h_df, r_df, a_df
 
 
-def get_data(driver, genre, max_pages=5):
+def get_data(driver, genre, max_pages=30):
+    time.sleep(1)
     try:
         outersoup = BeautifulSoup(driver.page_source, 'html5lib')
         pagelinks = outersoup.find("div", class_="pageNumbers")
         total_pages = pagelinks.find_all("a")[-1]
         max_pages = int(total_pages.text)
-        print("Found {} pages of {}.".format(str(max_pages), genre))
+        print("Found {} pages of {}".format(str(max_pages), genre))
     except Exception as e:
-        print("Can't tell how many pages there are, searching", max_pages, "-", e)
+        print("Can't tell how many pages there are, searching", max_pages, ":", e)
 
     # Temporary #
-    if max_pages > 5:
-        max_pages = 5
+    if testing:
+        max_pages = test_length
 
-    data = []
     date_gen = datetime.today().replace(microsecond=0)
-
-    for page in range(max_pages):
-        time.sleep(1)
-        soup = BeautifulSoup(driver.page_source, 'html5lib')
-        if genre is "Hotels":
-            results = soup.find("div", class_="relWrap")
-            partials = results.find_all("div", class_="listing_title")
-
-        elif genre is "Resturants":
-            results = soup.find("div", id="EATERY_SEARCH_RESULTS")
-            places = results.find_all("div", class_="listing")
-            partials = [p.find("div", class_="title") for p in places]
-
-        else:
-            results = soup.find("div", id="FILTERED_LIST")
-            partials = results.find_all("div", class_="listing_title")
-
-        links = []
-        for p in partials:
+    data = []
+    try:
+        for page in range(max_pages):
+            time.sleep(2)
             try:
-                if "http" not in p.a['href']:
-                    links.append("https://www.tripadvisor.com" + p.a['href'])
-                else:
-                    links.append(p.a['href'])
-            except AttributeError:
-                continue
-        print(f"Found {len(links)} links on page {page+1}/{max_pages} =>", end="")
+                nb = driver.find_elements_by_xpath("//*[contains(text(), 'Next')]")[-1]
+                next_page_loc = nb.get_attribute('href')
+            except IndexError:
+                next_page_loc = ""
 
-        # driver.minimize_window()
-        for i, link in enumerate(links):
-            if i > 2:
+            soup = BeautifulSoup(driver.page_source, 'html5lib')
+            if genre is "Hotels":
+                results = soup.find("div", class_="relWrap")
+                partials = results.find_all("div", class_="listing_title")
+
+            elif genre is "Resturants":
+                results = soup.find("div", id="EATERY_SEARCH_RESULTS")
+                places = results.find_all("div", class_="listing")
+                partials = [p.find("div", class_="title") for p in places]
+
+            else:
+                results = soup.find("div", id="FILTERED_LIST")
+                partials = results.find_all("div", class_="listing_title")
+
+            links = []
+            for p in partials:
+                try:
+                    if "http" not in p.a['href']:
+                        links.append("https://www.tripadvisor.com" + p.a['href'])
+                    else:
+                        links.append(p.a['href'])
+                except AttributeError:
+                    continue
+            print(f"Found {len(links)} links on page {page+1}/{max_pages} =>", end="")
+
+            # driver.minimize_window()
+            for i, link in enumerate(links):
+                if (i == test_length) and testing:
+                    break
+                time.sleep(1)
+                try:
+                    newrow = scrape_article(link, genre)
+                except StopIteration:
+                    continue
+
+                newrow.append(date_gen)
+                data.append(newrow)
+            print()
+
+            try:
+                driver.get(next_page_loc)
+            except Exception as e:
+                print("Failed to go past page {}/{} (Could not click next)".format(page + 1, max_pages))
+                print(e)
+                print("href:", nb.get_attribute('href'))
+                print("next_page_link:", next_page_loc, type(next_page_loc))
+                print(nb)
                 break
-            newrow = scrape_article(link, genre)
-            newrow.append(date_gen)
-            data.append(newrow)
-        print()
 
-        try:
-            page_nav_links = outersoup.find("div", class_=["unified", "pagination"]).find_all("a")
-            next_page = page_nav_links[1].get("href")
-            next_page = "https://www.tripadvisor.com/" + str(next_page)
-            driver.get(next_page)
-        except Exception as e:
-            print("\nFailed to go past page {}/{}".format(page + 1, max_pages))
-            raise
-    print("\nDone with", genre)
-    # driver.maximize_window()
+        print("\nDone with", genre)
+        # driver.maximize_window()
+    except Exception as e:
+        print("STOPPING EARLY BC:", e, e.__class__)
     return data
 
 
-def scrape_hotel(url):
+def scrape_hotel(url, soup):
     print(".", end="", flush=True)
-    # headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36'}
-    soup = BeautifulSoup(requests.get(url, headers=headers).text, 'html5lib')
-
-    # Scrape data, filling missing values with None
-    try:
-        title = soup.find('h1', id='HEADING').text
-    except AttributeError:
-        title = None
-    try:
-        review_count = soup.find('span', class_='reviews_header_count').text.strip('()')
-    except AttributeError:
-        review_count = None
-    try:
-        rating = soup.find("span", class_="overallRating").text
-    except AttributeError:
-        rating = None
-    try:
-        phone = soup.find("div", class_=['phone']).text
-    except AttributeError:
-        phone = None
-    try:
-        address = soup.find("span", class_="street-address").text.rstrip(',')
-    except AttributeError:
-        address = None
-    try:
-        exaddress = soup.find("span", class_="extended-address").text
-    except AttributeError:
-        exaddress = None
-    try:
-        local = soup.find("span", class_="locality").text.replace(',', '')
-    except AttributeError:
-        local = None
-    try:
-        country = soup.find("span", class_="country-name").text
-    except AttributeError:
-        country = None
-    try:
-        review_containers = soup.find_all("div", class_="review-container")
-        user_reviews = {ur.find("div", class_="info_text").text: ur.find("p", class_="partial_entry").text for ur in review_containers}
-    except AttributeError:
-        user_reviews = None
-
-    try:
-        keywords_container = soup.find("div", class_="ui_tagcloud_group").text.split("\n")  # Convert to a list
-        kwc = [w for w in keywords_container if w is not ""][1:]  # Remove first tag "all reviews" and empty strings
-        keywords = {w.split('"')[1]: w.split()[-2] for w in kwc}  # Seperate tag and count and put into dict
-    except AttributeError:
-        keywords = None
-    try:
-        star_count = soup.find("div", class_="starRatingWidget").text.strip('"').split()[0]
-    except AttributeError:
-        star_count = None
-
-    # Clean data
-    if address is None:
-        address = exaddress
-
-    if phone:
-        for c in phone:
-            if c.isalpha():
-                phone = None
-                break
-
-    # Put data into a list and return it
-    row = [title, rating, review_count, phone, address, local, country, star_count, user_reviews, keywords]
-    return row
-
-
-def scrape_resturant(url):
-    print(".", end="", flush=True)
-    # headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36'}
-    soup = BeautifulSoup(requests.get(url, headers=headers).text, 'html5lib')
-
     # Scrape data, filling missing values with None
     try:
         title = soup.find('h1', id='HEADING').text
@@ -277,28 +283,18 @@ def scrape_resturant(url):
     # try:
     #     review_containers = soup.find_all("div", class_="review-container")
     #     user_reviews = {ur.find("div", class_="info_text").text: ur.find("p", class_="partial_entry").text for ur in review_containers}
-    # except Exception:
+    # except AttributeError:
     #     user_reviews = None
-    # try:
-    #     rec_duration = soup.find("div", class_="AboutSection__textAlignWrapper--3dWW_").text
-    # except Exception:
-    #     rec_duration = None
-    # try:
-    #     price = soup.find("span", class_="fromPrice").text.rstrip('*')
-    # except Exception:
-    #     price = None
-    # try:
-    #     keywords_container = soup.find("div", class_="ui_tagcloud_group").text.split("\n")  # Convert to a list
-    #     kwc = [w for w in keywords_container if w is not ""][1:]  # Remove first tag "all reviews" and empty strings
-    #     keywords = {w.split('"')[1]: w.split()[-2] for w in kwc}  # Seperate tag and count and put into dict
-    # except Exception:
-    #     keywords = None
+
     try:
-        center = soup.find("div", class_="centerWell")
-        centercols = center.find_all("div", class_="subTitle")
-        cuisines = centercols[0].find("div", class_="text").text.strip('"').strip()
+        keywords_container = soup.find("div", class_=["prw_rup prw_filters_tag_cloud", "ui_tagcloud_group"]).text.split("\n")[1:]  # Convert to a list
+        keywords = {w.split('"')[1]: w.split()[-2] for w in keywords_container if w.strip()}  # Seperate tag and count and put into dict
     except AttributeError:
-        cuisines = None
+        keywords = None
+    try:
+        star_count = soup.find("div", class_="starRatingWidget").text.split(".")[1]
+    except AttributeError:
+        star_count = None
 
     # Clean data
     if address is None:
@@ -311,15 +307,12 @@ def scrape_resturant(url):
                 break
 
     # Put data into a list and return it
-    row = [title, rating, review_count, phone, address, local, country, cuisines]
+    row = [title, rating, review_count, phone, address, local, country, star_count, str(keywords)]
     return row
 
 
-def scrape_attraction(url):
+def scrape_resturant(url, soup):
     print(".", end="", flush=True)
-    # headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36'}
-    soup = BeautifulSoup(requests.get(url, headers=headers).text, 'html5lib')
-
     # Scrape data, filling missing values with None
     try:
         title = soup.find('h1', id='HEADING').text
@@ -354,16 +347,72 @@ def scrape_attraction(url):
     except AttributeError:
         country = None
     try:
-        review_containers = soup.find_all("div", class_="review-container")
-        user_reviews = {ur.find("div", class_="info_text").text: ur.find("p", class_="partial_entry").text for ur in review_containers}
+        rap = soup.find("div", class_="rating_and_popularity")
+        cuisines = rap.find("span", class_="header_links").text.strip('"').strip()
     except AttributeError:
-        user_reviews = None
+        cuisines = None
+
+    # Clean data
+    if address is None:
+        address = exaddress
+
+    if phone:
+        for c in phone:
+            if c.isalpha():
+                phone = None
+                break
+
+    # Put data into a list and return it
+    row = [title, rating, review_count, phone, address, local, country, cuisines]
+    return row
+
+
+def scrape_attraction(url, soup):
+    print(".", end="", flush=True)
+    # Scrape data, filling missing values with None
     try:
-        rec_duration = soup.find("div", class_="detail_section duration").text
+        title = soup.find('h1', id='HEADING').text
+    except AttributeError:
+        title = None
+    try:
+        review_count = soup.find('span', class_='reviews_header_count').text.strip('()')
+    except AttributeError:
+        review_count = None
+    try:
+        rating = soup.find("span", class_="overallRating").text
+    except AttributeError:
+        rating = None
+    try:
+        phone = soup.find("div", class_=['phone']).text
+    except AttributeError:
+        phone = None
+    try:
+        address = soup.find("span", class_="street-address").text.rstrip(',')
+    except AttributeError:
+        address = None
+    try:
+        exaddress = soup.find("span", class_="extended-address").text
+    except AttributeError:
+        exaddress = None
+    try:
+        local = soup.find("span", class_="locality").text.replace(',', '')
+    except AttributeError:
+        local = None
+    try:
+        country = soup.find("span", class_="country-name").text
+    except AttributeError:
+        country = None
+    # try:
+    #     review_containers = soup.find_all("div", class_="review-container")
+    #     user_reviews = {ur.find("div", class_="info_text").text: ur.find("p", class_="partial_entry").text for ur in review_containers}
+    # except AttributeError:
+    #     user_reviews = None
+    try:
+        rec_duration = soup.find("div", class_="detail_section duration").text.split(':')[1].strip()
     except AttributeError:
         rec_duration = None
     try:
-        description = soup.find("div", class_="description overflow")
+        description = soup.find("div", class_=["description", "overflow"])
         description = description.find("div", class_="text").text.strip('"')
     except AttributeError:
         description = None
@@ -372,9 +421,8 @@ def scrape_attraction(url):
     except AttributeError:
         price = None
     try:
-        keywords_container = soup.find("div", class_="tagcloud_wrapper").text.split("\n")  # Convert to a list
-        kwc = [w for w in keywords_container if w is not ""][1:]  # Remove first tag "all reviews" and empty strings
-        keywords = {w.split('"')[1]: w.split()[-2] for w in kwc}  # Seperate tag and count and put into dict
+        keywords_container = soup.find("div", class_=["tagcloud_wrapper", "ui_tagcloud_group"]).text.split("\n")[1:]  # Convert to a list
+        keywords = {w.split('"')[1]: w.split()[-2] for w in keywords_container if w.strip()}  # Seperate tag and count and put into dict
     except AttributeError:
         keywords = None
 
@@ -389,25 +437,31 @@ def scrape_attraction(url):
                 break
 
     # Put data into a list and return it
-    ['Title', 'Rating', 'Review Count', 'Phone Number', 'Address', 'Locality', 'Country', 'Duration','Price', 'Description', 'User Reviews', 'Keywords', 'Date Generated']
-
-    row = [title, rating, review_count, phone, address, local, country, rec_duration, price, description, user_reviews, keywords]
+    row = [title, rating, review_count, phone, address, local, country, rec_duration, price, description, str(keywords)]
     return row
 
 
 # Implementation of a switch case to call the correct scraping function
 def scrape_article(url, genre):
+    try:
+        soup = BeautifulSoup(requests.get(url, headers=headers).text, 'html5lib')
+    except ConnectionError:
+        print("Connection error".center(80, '='))
+        time.sleep(10)
+        try:
+            soup = BeautifulSoup(requests.get(url, headers=headers).text, 'html5lib')
+        except ConnectionError:
+            time.sleep(10)
+            raise StopIteration
+            # Script is being blocked, wait and then raise and error back in get_data function
+
     switch = {
         "Hotels": scrape_hotel,
         "Resturants": scrape_resturant,
         "Attractions": scrape_attraction
     }
     func = switch.get(genre, lambda input: print("Invalid genre"))
-    return func(url)
-
-
-def main():
-    script()
+    return func(url, soup)
 
 
 if __name__ == '__main__':
