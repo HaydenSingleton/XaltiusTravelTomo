@@ -156,11 +156,10 @@ def search(query):
         a_df = pd.DataFrame(data3, columns=list(column_titles_a))
 
         driver.quit()
-    except WebDriverException as e:
+    except Exception as e:
         print("\nFatal Error, quiting...")
         driver.quit()
         print(e)
-        quit()
     return h_df, r_df, a_df
 
 
