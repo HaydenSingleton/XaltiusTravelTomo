@@ -56,11 +56,11 @@ def main():
         exit()
 
     for place in queries:
-        try:
-            folder_path = os.path.join("data", place)
-            os.mkdir(folder_path)
-        except OSError:
-            pass
+        # try:
+        #     folder_path = os.path.join("data", place)
+        #     os.mkdir(folder_path)
+        # except OSError:
+        #     pass
         hotels_df, resturants_df, attractions_df = search(place)
         # for i, genre in enumerate(genres):
         #     root_path = place + "_" + genre + "_data.csv"
