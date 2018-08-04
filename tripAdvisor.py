@@ -16,8 +16,7 @@ from selenium.webdriver.chrome.options import Options
 
 
 testing = False  # Flag to shorten loop execution
-test_length = 2  # Number of pages and links per page to search during testing
-
+test_length = 3  # Number of pages and links per page to search during testing
 
 # Global variables
 column_titles_h = ['Title', 'Rating', 'Review Count', 'Phone Number', 'Address', 'Locality', 'Country', 'Stars', 'Keywords', 'Date Generated']
@@ -39,7 +38,7 @@ def main():
     print("Searching: [" + ", ".join(queries), end="]\n")
 
     # Set up
-    # genres = 'Hotels', 'Resturants', 'Attractions'
+    genres = 'Hotels', 'Resturants', 'Attractions'
     if testing:
         print("Testing Enabled".center(80, '-'), end="")
     try:
@@ -56,19 +55,16 @@ def main():
         exit()
 
     for place in queries:
-        # try:
-        #     folder_path = os.path.join("data", place)
-        #     os.mkdir(folder_path)
-        # except OSError:
-        #     pass
+        try:
+            folder_path = os.path.join("data", place)
+            os.mkdir(folder_path)
+        except OSError:
+            pass
         hotels_df, resturants_df, attractions_df = search(place)
-        # for i, genre in enumerate(genres):
-        #     root_path = place + "_" + genre + "_data.csv"
-        #     filepath = os.path.join(os.path.abspath(folder_path), root_path)
-        #     try:
-        #         dfs[i].to_csv(path_or_buf=filepath)
-        #     except PermissionError:
-        #         pass
+        for i, df in enumerate([hotels_df, resturants_df, attractions_df]):
+            root_path = place + "_" + genres[i] + "_data.csv"
+            filepath = os.path.join(os.path.abspath(folder_path), root_path)
+            df.to_csv(path_or_buf=filepath)
 
         # Append collected data to the table for Hotels, Resturants, and Attractions respectively
         hotels_df.to_sql("Hotels", con=engine, if_exists="replace", index=False,
@@ -80,7 +76,6 @@ def main():
                                 "Locality": sqlalchemy.types.NVARCHAR(200),
                                 "Country": sqlalchemy.types.NVARCHAR(200),
                                 "Stars": sqlalchemy.types.NVARCHAR(255),
-                                "User Reviews": sqlalchemy.types.NVARCHAR(200),
                                 "Keywords": sqlalchemy.types.NVARCHAR(200),
                                 "Date Generated": sqlalchemy.types.NVARCHAR(200)
                                 })
@@ -108,7 +103,6 @@ def main():
                                      "Suggested Duration": sqlalchemy.types.NVARCHAR(200),
                                      "Price": sqlalchemy.types.NVARCHAR(200),
                                      "Description": sqlalchemy.types.NVARCHAR(200),
-                                     "User Reviews": sqlalchemy.types.NVARCHAR(200),
                                      "Keywords": sqlalchemy.types.NVARCHAR(200),
                                      "Date Generated": sqlalchemy.types.NVARCHAR(200)
                                      })
@@ -118,48 +112,49 @@ def main():
 
 def search(query):
     h_df, r_df, a_df = pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+    # try:
+    print("\nBeginning search in", query)
+    # Set up browser
+    chrome_options = Options()
+    chrome_options.add_argument('--log-level=3')
+    chrome_options.add_argument('--ignore-certificate-errors')
+    chrome_options.add_argument('--ignore-ssl-errors')
+    driver = webdriver.Chrome(chrome_options=chrome_options)
+    # os.environ['MOZ_HEADLESS'] = '1'
+    # driver = webdriver.Firefox()
+    driver.set_page_load_timeout(10)
+
+    # Navigate to trip TripAdvisor, starting with hotels
+    main_url = "https://www.tripadvisor.com/Hotels"
+    # This should redirect to the correct local domain as needed (ex- .com.sg) AFAIK
     try:
-        print("\nBeginning search in", query)
-        # Set up browser
-        chrome_options = Options()
-        chrome_options.add_argument('--log-level=3')
-        chrome_options.add_argument('--ignore-certificate-errors')
-        chrome_options.add_argument('--ignore-ssl-errors')
-        driver = webdriver.Chrome(chrome_options=chrome_options)
-        # os.environ['MOZ_HEADLESS'] = '1'
-        # driver = webdriver.Firefox()
-        driver.set_page_load_timeout(10)
-
-        # Navigate to trip TripAdvisor, starting with hotels
-        main_url = "https://www.tripadvisor.com/Hotels"
-        # This should redirect to the correct local domain as needed (ex- .com.sg) AFAIK
-        try:
-            driver.get(main_url)
-            driver.find_element_by_id("global-nav-hotels").click()
-        except NoSuchElementException:
-            driver.quit()
-            print("Unable to access website")
-            print("Are you connected to internet ?")
-            exit(0)
-        driver.find_element_by_class_name("typeahead_input").send_keys(query)
-        driver.find_element_by_class_name("submit_text").click()
-
-        data = get_data(driver, "Hotels")
-        h_df = pd.DataFrame(data, columns=list(column_titles_h))
-
-        driver.find_element_by_id("global-nav-restaurants").click()
-        data2 = get_data(driver, "Resturants")
-        r_df = pd.DataFrame(data2, columns=list(column_titles_r))
-
-        driver.find_element_by_id("global-nav-attractions").click()
-        data3 = get_data(driver, "Attractions")
-        a_df = pd.DataFrame(data3, columns=list(column_titles_a))
-
+        driver.get(main_url)
+        driver.find_element_by_id("global-nav-hotels").click()
+    except NoSuchElementException:
         driver.quit()
-    except Exception as e:
-        print("\nFatal Error, quiting...")
-        driver.quit()
-        print(e)
+        print("Unable to access website")
+        print("Are you connected to internet ?")
+        exit(0)
+    driver.find_element_by_class_name("typeahead_input").send_keys(query)
+    driver.find_element_by_class_name("submit_text").click()
+
+    data = get_data(driver, "Hotels")
+    h_df = pd.DataFrame(data, columns=list(column_titles_h))
+
+    driver.find_element_by_id("global-nav-restaurants").click()
+    data2 = get_data(driver, "Resturants")
+    r_df = pd.DataFrame(data2, columns=list(column_titles_r))
+
+    driver.find_element_by_id("global-nav-attractions").click()
+    data3 = get_data(driver, "Attractions")
+    a_df = pd.DataFrame(data3, columns=list(column_titles_a))
+
+    driver.quit()
+    # except Exception as e:
+    #     print("\nFatal Error, quiting...")
+    #     driver.quit()
+    #     print(e)
+    #     quit()
     return h_df, r_df, a_df
 
 
@@ -181,12 +176,13 @@ def get_data(driver, genre, max_pages=30):
     date_gen = datetime.today().replace(microsecond=0)
     data = []
     try:
+        max_pages = 20
         for page in range(max_pages):
-            time.sleep(2)
+            time.sleep(1)
             try:
                 nb = driver.find_elements_by_xpath("//*[contains(text(), 'Next')]")[-1]
                 next_page_loc = nb.get_attribute('href')
-            except IndexError:
+            except Exception:
                 next_page_loc = ""
 
             soup = BeautifulSoup(driver.page_source, 'html5lib')
@@ -218,7 +214,7 @@ def get_data(driver, genre, max_pages=30):
             for i, link in enumerate(links):
                 if (i == test_length) and testing:
                     break
-                time.sleep(1)
+                # time.sleep(1)
                 try:
                     newrow = scrape_article(link, genre)
                 except StopIteration:
@@ -233,16 +229,37 @@ def get_data(driver, genre, max_pages=30):
             except Exception as e:
                 print("Failed to go past page {}/{} (Could not click next)".format(page + 1, max_pages))
                 print(e)
-                print("href:", nb.get_attribute('href'))
-                print("next_page_link:", next_page_loc, type(next_page_loc))
-                print(nb)
                 break
 
         print("\nDone with", genre)
         # driver.maximize_window()
-    except Exception as e:
+    except WebDriverException as e:
         print("STOPPING EARLY BC:", e, e.__class__)
     return data
+
+# Implementation of a switch case to call the correct scraping function
+
+
+def scrape_article(url, genre):
+    try:
+        soup = BeautifulSoup(requests.get(url, headers=headers).text, 'html5lib')
+    except ConnectionError:
+        print("Connection error".center(80, '='))
+        time.sleep(10)
+        try:
+            soup = BeautifulSoup(requests.get(url, headers=headers).text, 'html5lib')
+        except ConnectionError:
+            time.sleep(10)
+            raise StopIteration
+            # Script is being blocked, wait and then raise and error back in get_data function
+
+    switch = {
+        "Hotels": scrape_hotel,
+        "Resturants": scrape_resturant,
+        "Attractions": scrape_attraction
+    }
+    func = switch.get(genre, lambda input: print("Invalid genre"))
+    return func(url, soup)
 
 
 def scrape_hotel(url, soup):
@@ -292,7 +309,10 @@ def scrape_hotel(url, soup):
     except AttributeError:
         keywords = None
     try:
-        star_count = soup.find("div", class_="starRatingWidget").text.split(".")[1]
+        try:
+            star_count = soup.find("div", class_="starRatingWidget").text.split(".")[1]
+        except IndexError:
+            star_count = soup.find("div", class_="starRatingWidget").text
     except AttributeError:
         star_count = None
 
@@ -439,29 +459,6 @@ def scrape_attraction(url, soup):
     # Put data into a list and return it
     row = [title, rating, review_count, phone, address, local, country, rec_duration, price, description, str(keywords)]
     return row
-
-
-# Implementation of a switch case to call the correct scraping function
-def scrape_article(url, genre):
-    try:
-        soup = BeautifulSoup(requests.get(url, headers=headers).text, 'html5lib')
-    except ConnectionError:
-        print("Connection error".center(80, '='))
-        time.sleep(10)
-        try:
-            soup = BeautifulSoup(requests.get(url, headers=headers).text, 'html5lib')
-        except ConnectionError:
-            time.sleep(10)
-            raise StopIteration
-            # Script is being blocked, wait and then raise and error back in get_data function
-
-    switch = {
-        "Hotels": scrape_hotel,
-        "Resturants": scrape_resturant,
-        "Attractions": scrape_attraction
-    }
-    func = switch.get(genre, lambda input: print("Invalid genre"))
-    return func(url, soup)
 
 
 if __name__ == '__main__':
