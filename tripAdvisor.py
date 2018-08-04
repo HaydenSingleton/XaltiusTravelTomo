@@ -16,7 +16,7 @@ from selenium.webdriver.chrome.options import Options
 
 
 testing = False  # Flag to shorten loop execution
-test_length = 3  # Number of pages and links per page to search during testing
+test_length = 1  # Number of pages and links per page to search during testing
 
 # Global variables
 column_titles_h = ['Title', 'Rating', 'Review Count', 'Phone Number', 'Address', 'Locality', 'Country', 'Stars', 'Keywords', 'Date Generated']
@@ -45,6 +45,10 @@ def main():
         os.remove("geckodriver.log")
     except OSError:
         pass
+    try:
+        os.mkdir("data")
+    except OSError:
+        pass
 
     # Create sqlalchemy engine for connecting sql server
     try:
@@ -55,15 +59,10 @@ def main():
         exit()
 
     for place in queries:
-        try:
-            folder_path = os.path.join("data", place)
-            os.mkdir(folder_path)
-        except OSError:
-            pass
         hotels_df, resturants_df, attractions_df = search(place)
         for i, df in enumerate([hotels_df, resturants_df, attractions_df]):
             root_path = place + "_" + genres[i] + "_data.csv"
-            filepath = os.path.join(os.path.abspath(folder_path), root_path)
+            filepath = os.path.join(os.path.abspath("data"), root_path)
             df.to_csv(path_or_buf=filepath)
 
         # Append collected data to the table for Hotels, Resturants, and Attractions respectively
@@ -125,7 +124,7 @@ def search(query):
     driver.set_page_load_timeout(10)
 
     # Navigate to trip TripAdvisor, starting with hotels
-    main_url = "https://www.tripadvisor.com/Hotels"
+    main_url = "https://www.tripadvisor.com/"
     # This should redirect to the correct local domain as needed (ex- .com.sg) AFAIK
     try:
         driver.get(main_url)
@@ -158,14 +157,15 @@ def search(query):
     return h_df, r_df, a_df
 
 
-def get_data(driver, genre, max_pages=30):
-    time.sleep(1)
+def get_data(driver, genre, max_pages=20):
+    time.sleep(0.1)
     try:
         outersoup = BeautifulSoup(driver.page_source, 'html5lib')
         pagelinks = outersoup.find("div", class_="pageNumbers")
         total_pages = pagelinks.find_all("a")[-1]
         max_pages = int(total_pages.text)
         print("Found {} pages of {}".format(str(max_pages), genre))
+        max_pages = 20
     except Exception as e:
         print("Can't tell how many pages there are, searching", max_pages, ":", e)
 
@@ -176,9 +176,8 @@ def get_data(driver, genre, max_pages=30):
     date_gen = datetime.today().replace(microsecond=0)
     data = []
     try:
-        max_pages = 20
         for page in range(max_pages):
-            time.sleep(1)
+            time.sleep(0.1)
             try:
                 nb = driver.find_elements_by_xpath("//*[contains(text(), 'Next')]")[-1]
                 next_page_loc = nb.get_attribute('href')
