@@ -167,7 +167,7 @@ def get_data(driver, genre, max_pages=20):
         print("Found {} pages of {}".format(str(max_pages), genre))
         max_pages = 20
     except Exception as e:
-        print("Can't tell how many pages there are, searching", max_pages, ":", e)
+        print("Can't tell how many pages there are, searching", max_pages, "- Class:", e.__class__)
 
     # Temporary #
     if testing:
