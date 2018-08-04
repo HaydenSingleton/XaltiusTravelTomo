@@ -156,7 +156,7 @@ def search(query):
         a_df = pd.DataFrame(data3, columns=list(column_titles_a))
 
         driver.quit()
-    except Exception as e:
+    except StopAsyncIteration as e:
         print("\nFatal Error, quiting...")
         driver.quit()
         print(e)
@@ -180,68 +180,67 @@ def get_data(driver, genre, max_pages=30):
 
     date_gen = datetime.today().replace(microsecond=0)
     data = []
-    try:
-        for page in range(max_pages):
-            time.sleep(2)
+    # try:
+    pages_to_get = 10
+    for page in range(pages_to_get):
+        time.sleep(1)
+        try:
+            nb = driver.find_elements_by_xpath("//*[contains(text(), 'Next')]")[-1]
+            next_page_loc = nb.get_attribute('href')
+        except IndexError:
+            next_page_loc = ""
+
+        soup = BeautifulSoup(driver.page_source, 'html5lib')
+        if genre is "Hotels":
+            results = soup.find("div", class_="relWrap")
+            partials = results.find_all("div", class_="listing_title")
+
+        elif genre is "Resturants":
+            results = soup.find("div", id="EATERY_SEARCH_RESULTS")
+            places = results.find_all("div", class_="listing")
+            partials = [p.find("div", class_="title") for p in places]
+
+        else:
+            results = soup.find("div", id="FILTERED_LIST")
+            partials = results.find_all("div", class_="listing_title")
+
+        links = []
+        for p in partials:
             try:
-                nb = driver.find_elements_by_xpath("//*[contains(text(), 'Next')]")[-1]
-                next_page_loc = nb.get_attribute('href')
-            except IndexError:
-                next_page_loc = ""
+                if "http" not in p.a['href']:
+                    links.append("https://www.tripadvisor.com" + p.a['href'])
+                else:
+                    links.append(p.a['href'])
+            except AttributeError:
+                continue
+        print(f"Found {len(links)} links on page {page+1}/{pages_to_get} =>", end="")
 
-            soup = BeautifulSoup(driver.page_source, 'html5lib')
-            if genre is "Hotels":
-                results = soup.find("div", class_="relWrap")
-                partials = results.find_all("div", class_="listing_title")
-
-            elif genre is "Resturants":
-                results = soup.find("div", id="EATERY_SEARCH_RESULTS")
-                places = results.find_all("div", class_="listing")
-                partials = [p.find("div", class_="title") for p in places]
-
-            else:
-                results = soup.find("div", id="FILTERED_LIST")
-                partials = results.find_all("div", class_="listing_title")
-
-            links = []
-            for p in partials:
-                try:
-                    if "http" not in p.a['href']:
-                        links.append("https://www.tripadvisor.com" + p.a['href'])
-                    else:
-                        links.append(p.a['href'])
-                except AttributeError:
-                    continue
-            print(f"Found {len(links)} links on page {page+1}/{max_pages} =>", end="")
-
-            # driver.minimize_window()
-            for i, link in enumerate(links):
-                if (i == test_length) and testing:
-                    break
-                time.sleep(1)
-                try:
-                    newrow = scrape_article(link, genre)
-                except StopIteration:
-                    continue
-
-                newrow.append(date_gen)
-                data.append(newrow)
-            print()
-
-            try:
-                driver.get(next_page_loc)
-            except Exception as e:
-                print("Failed to go past page {}/{} (Could not click next)".format(page + 1, max_pages))
-                print(e)
-                print("href:", nb.get_attribute('href'))
-                print("next_page_link:", next_page_loc, type(next_page_loc))
-                print(nb)
+        # driver.minimize_window()
+        for i, link in enumerate(links):
+            if (i == test_length) and testing:
                 break
+            time.sleep(1)
+            try:
+                newrow = scrape_article(link, genre)
+            except StopIteration:
+                continue
 
-        print("\nDone with", genre)
-        # driver.maximize_window()
-    except Exception as e:
-        print("STOPPING EARLY BC:", e, e.__class__)
+            newrow.append(date_gen)
+            data.append(newrow)
+        print()
+
+        try:
+            driver.get(next_page_loc)
+        except Exception as e:
+            print("Failed to go past page {}/{} (Could not click next)".format(page + 1, max_pages))
+            print("href:", nb.get_attribute('href'))
+            print("next_page_link:", next_page_loc, type(next_page_loc))
+            break
+
+    print("\nDone with", genre)
+
+    # except Exception as e:
+    #     print("STOPPING EARLY BC:", e, e.__class__)
     return data
 
 

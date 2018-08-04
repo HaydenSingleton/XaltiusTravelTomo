@@ -1,7 +1,5 @@
 import os
-# from datetime import datetime
 import pandas as pd
-from pandas import DataFrame
 
 # Source for 2 digit ISO codes for countries
 url = "https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2"
@@ -16,9 +14,9 @@ os.chdir("data")
 df = pd.read_html(url)[2]
 
 # Fix column titles (initially the first row contains the titles)
-df.columns = list(df.iloc[0,:])
+df.columns = list(df.iloc[0, :])
 df.drop(df.index[2])
-df.drop(df.index[0], inplace=True) # same as df = df[1:]
+df.drop(df.index[0], inplace=True)  # same as df = df[1:]
 
 # Delete extra columns
 df.drop(df.columns[2:], axis=1, inplace=True)
