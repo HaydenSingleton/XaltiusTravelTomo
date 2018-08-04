@@ -16,7 +16,8 @@ from selenium.webdriver.chrome.options import Options
 
 
 testing = False  # Flag to shorten loop execution
-test_length = 1  # Number of pages and links per page to search during testing
+test_length = 2  # Number of pages and links per page to search during testing
+
 
 # Global variables
 column_titles_h = ['Title', 'Rating', 'Review Count', 'Phone Number', 'Address', 'Locality', 'Country', 'Stars', 'Keywords', 'Date Generated']
@@ -213,7 +214,7 @@ def get_data(driver, genre, max_pages=20):
             for i, link in enumerate(links):
                 if (i == test_length) and testing:
                     break
-                # time.sleep(1)
+                time.sleep(0.1)
                 try:
                     newrow = scrape_article(link, genre)
                 except StopIteration:
@@ -259,7 +260,6 @@ def scrape_article(url, genre):
     }
     func = switch.get(genre, lambda input: print("Invalid genre"))
     return func(url, soup)
-
 
 def scrape_hotel(url, soup):
     print(".", end="", flush=True)
