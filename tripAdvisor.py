@@ -68,9 +68,12 @@ def main():
             filepath = os.path.join(os.path.abspath("data"), root_path)
             try:
                 df.to_csv(path_or_buf=filepath)
-            except Exception:
-                filepath = os.path.join("data", place+"_"+genres[i]+"_data.csv")
-                df.to_csv(path_or_buf=filepath)
+            except FileNotFoundError:
+                filepath = os.path.join(place+"_"+genres[i]+"_data.csv")
+                try:
+                    df.to_csv(path_or_buf=filepath)
+                except FileNotFoundError:
+                    pass
 
         # Append collected data to the table for Hotels, Resturants, and Attractions respectively
         hotels_df.to_sql("Hotels", con=engine, if_exists="replace", index=False,
@@ -167,7 +170,7 @@ def search(query):
     return h_df, r_df, a_df
 
 
-def get_data(driver, genre, max_pages=20):
+def get_data(driver, genre, max_pages=10):
     time.sleep(0.1)
     try:
         outersoup = BeautifulSoup(driver.page_source, 'html5lib')
@@ -236,7 +239,7 @@ def get_data(driver, genre, max_pages=20):
             try:
                 driver.get(next_page_loc)
             except Exception as e:
-                print("Failed to go past page {}/{} (Could not click next)".format(page + 1, max_pages))
+                print("Error: could not click next -)")
                 print(e)
                 break
 
