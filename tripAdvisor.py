@@ -51,6 +51,8 @@ def main():
     except OSError:
         pass
 
+    os.chdir("data")
+
     # Create sqlalchemy engine for connecting sql server
     try:
         quoted = parse.quote_plus('DRIVER={};Server={};Database={};UID={};PWD={};TDS_Version=8.0;Port=1433;'.format("ODBC Driver 13 for SQL Server", "sql-stg-sc-travel.civfwvdbx0g6.ap-southeast-1.rds.amazonaws.com", "tripAdvisor", "traveltomo", "traveltomo123"))
@@ -64,7 +66,11 @@ def main():
         for i, df in enumerate([hotels_df, resturants_df, attractions_df]):
             root_path = place + "_" + genres[i] + "_data.csv"
             filepath = os.path.join(os.path.abspath("data"), root_path)
-            df.to_csv(path_or_buf=filepath)
+            try:
+                df.to_csv(path_or_buf=filepath)
+            except Exception:
+                filepath = os.path.join("data", place+"_"+genres[i]+"_data.csv")
+                df.to_csv(path_or_buf=filepath)
 
         # Append collected data to the table for Hotels, Resturants, and Attractions respectively
         hotels_df.to_sql("Hotels", con=engine, if_exists="replace", index=False,
@@ -79,18 +85,21 @@ def main():
                                 "Keywords": sqlalchemy.types.NVARCHAR(200),
                                 "Date Generated": sqlalchemy.types.NVARCHAR(200)
                                 })
+        try:
+            resturants_df.to_sql("Resturants", con=engine, index=False,
+                                dtype={"Title": sqlalchemy.types.NVARCHAR(200),
+                                        "Rating": sqlalchemy.types.NVARCHAR(200),
+                                        "Review Count": sqlalchemy.types.NVARCHAR(200),
+                                        "Phone Number": sqlalchemy.types.NVARCHAR(200),
+                                        "Address": sqlalchemy.types.NVARCHAR(200),
+                                        "Locality": sqlalchemy.types.NVARCHAR(200),
+                                        "Country": sqlalchemy.types.NVARCHAR(200),
+                                        "Cusines": sqlalchemy.types.NVARCHAR(200),
+                                        "Date Generated": sqlalchemy.types.NVARCHAR(200)
+                                        })
+        except ValueError:
+                                        pass
 
-        resturants_df.to_sql("Resturants", con=engine, if_exists="replace", index=False,
-                             dtype={"Title": sqlalchemy.types.NVARCHAR(200),
-                                    "Rating": sqlalchemy.types.NVARCHAR(200),
-                                    "Review Count": sqlalchemy.types.NVARCHAR(200),
-                                    "Phone Number": sqlalchemy.types.NVARCHAR(200),
-                                    "Address": sqlalchemy.types.NVARCHAR(200),
-                                    "Locality": sqlalchemy.types.NVARCHAR(200),
-                                    "Country": sqlalchemy.types.NVARCHAR(200),
-                                    "Cusines": sqlalchemy.types.NVARCHAR(200),
-                                    "Date Generated": sqlalchemy.types.NVARCHAR(200)
-                                    })
 
         attractions_df.to_sql("Attractions", con=engine, if_exists="replace", index=False,
                               dtype={"Title": sqlalchemy.types.NVARCHAR(200),
@@ -168,7 +177,7 @@ def get_data(driver, genre, max_pages=20):
         print("Found {} pages of {}".format(str(max_pages), genre))
         max_pages = 20
     except Exception as e:
-        print("Can't tell how many pages there are, searching", max_pages, "- Class:", e.__class__)
+        print("Can't tell how many pages there are, searching", max_pages, "--", e)
 
     # Temporary #
     if testing:
