@@ -25,7 +25,7 @@ column_titles_r = ['Title', 'Rating', 'Review Count', 'Phone Number', 'Address',
 column_titles_a = ['Title', 'Rating', 'Review Count', 'Phone Number', 'Address', 'Locality', 'Country', 'Suggested Duration', 'Price', 'Description', 'Keywords', 'Categories','Date Generated']
 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36'}
 # driver_path = os.path.normpath("C:\\Users\\Hayden\\Anaconda3\\selenium\\webdriver")
-get_hotels, get_resturants, get_attractions = False, False, True
+get_hotels, get_resturants, get_attractions = True, True, True
 
 
 def main():
