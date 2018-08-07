@@ -22,10 +22,10 @@ test_length = 2  # Number of pages and links per page to search during testing
 # Global variables
 column_titles_h = ['Title', 'Rating', 'Review Count', 'Phone Number', 'Address', 'Locality', 'Country', 'Stars', 'Keywords', 'Date Generated']
 column_titles_r = ['Title', 'Rating', 'Review Count', 'Phone Number', 'Address', 'Locality', 'Country', 'Cusines', 'Date Generated']
-column_titles_a = ['Title', 'Rating', 'Review Count', 'Phone Number', 'Address', 'Locality', 'Country', 'Suggested Duration', 'Price', 'Description', 'Keywords', 'Date Generated']
+column_titles_a = ['Title', 'Rating', 'Review Count', 'Phone Number', 'Address', 'Locality', 'Country', 'Suggested Duration', 'Price', 'Description', 'Keywords', 'Categories','Date Generated']
 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36'}
 # driver_path = os.path.normpath("C:\\Users\\Hayden\\Anaconda3\\selenium\\webdriver")
-get_hotels, get_resturants, get_attractions = True, False, True
+get_hotels, get_resturants, get_attractions = False, False, True
 
 
 def main():
@@ -37,7 +37,7 @@ def main():
     else:
         input_list = sys.argv[1:]
     queries = [s.capitalize() for s in input_list]
-    print("Searching: [" + ", ".join(queries), end="]\n")
+    print("Searching: [" + ", ".join(queries) + "]")
 
     # Set up
     genres = 'Hotels', 'Resturants', 'Attractions'
@@ -92,7 +92,7 @@ def main():
                                 })
         except ValueError:
             print("Hotels table already found in sql database")
-        except Exception:
+        except Exception as e:
             print("Error inserting to hotels:", e)
 
         try:
@@ -109,7 +109,7 @@ def main():
                                         })
         except ValueError:
             print("Resturants table already found in sql database")
-        except Exception:
+        except Exception as e:
             print("Error inserting to resturants:", e)
 
         try:
@@ -125,11 +125,12 @@ def main():
                                      "Price": sqlalchemy.types.NVARCHAR(200),
                                      "Description": sqlalchemy.types.NVARCHAR(200),
                                      "Keywords": sqlalchemy.types.NVARCHAR(200),
-                                     "Date Generated": sqlalchemy.types.NVARCHAR(200)
+                                     "Categories": sqlalchemy.types.NVARCHAR(200),
+                                     "Date Generated": sqlalchemy.types.NVARCHAR(200),
                                      })
         except ValueError:
             print("Attractions table already found in sql database")
-        except Exception:
+        except Exception as e:
             print("Error inserting to attractions:", e)
 
     print(time.strftime("Finished at %H:%M:%S\n", time.localtime()))
@@ -162,6 +163,7 @@ def search(query):
         exit(0)
     driver.find_element_by_class_name("typeahead_input").send_keys(query)
     driver.find_element_by_class_name("submit_text").click()
+    time.sleep(0.5)
 
     if get_hotels:
         data = get_data(driver, "Hotels")
@@ -266,8 +268,6 @@ def get_data(driver, genre, max_pages=10):
     return data
 
 # Implementation of a switch case to call the correct scraping function
-
-
 def scrape_article(url, genre):
     try:
         soup = BeautifulSoup(requests.get(url, headers=headers).text, 'html5lib')
@@ -472,6 +472,11 @@ def scrape_attraction(url, soup):
         keywords = {w.split('"')[1]: w.split()[-2] for w in keywords_container if w.strip()}  # Seperate tag and count and put into dict
     except AttributeError:
         keywords = None
+    try:
+        tags = soup.find("span", class_="attraction_details").text.replace('\n', ' ')
+    except AttributeError:
+        tags = None
+
 
     # Clean data
     if address is None:
@@ -484,7 +489,7 @@ def scrape_attraction(url, soup):
                 break
 
     # Put data into a list and return it
-    row = [title, rating, review_count, phone, address, local, country, rec_duration, price, description, str(keywords)]
+    row = [title, rating, review_count, phone, address, local, country, rec_duration, price, description, keywords, tags]
     return row
 
 
