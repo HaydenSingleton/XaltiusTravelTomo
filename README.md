@@ -1,6 +1,11 @@
 # TravelTomo
-Main script is "_tripAdivisor-test.py"
-Last working version is "_tripAdvisor.py"
+Main script is "tripAdivisor.py"
+"sql-script.py" and "genCountryTable.py" are utilities for connecting with
+
+## Purpose
+  This script demonstrates backend data collection techniques
+  There is no user interface with this project
+
 
 ## Script to pull data from Trip Advisor's "Things to do" search results
 This code takes data from Trip Advisor about attractions in the location/city, to be
