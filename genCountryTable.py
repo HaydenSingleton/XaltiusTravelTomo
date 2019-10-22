@@ -13,17 +13,11 @@ os.chdir("data")
 # Get country data/list from the third table on the page
 df = pd.read_html(url)[2]
 
-# Fix column titles (initially the first row contains the titles)
-df.columns = list(df.iloc[0, :])
-df.drop(df.index[2])
-df.drop(df.index[0], inplace=True)  # same as df = df[1:]
-
 # Delete extra columns
 df.drop(df.columns[2:], axis=1, inplace=True)
 
-df.set_index('Code', inplace=True)
-
 filename = "countries.csv"
 filepath = os.path.join(os.getcwd(), filename)
-df.to_csv(path_or_buf=filepath)
-# print(df.head())
+
+df.to_csv(filepath)
+print(df.head())
