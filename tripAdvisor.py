@@ -10,21 +10,23 @@ import sqlalchemy
 from bs4 import BeautifulSoup
 
 from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import (NoSuchElementException,
                                         WebDriverException)
 from selenium.webdriver.chrome.options import Options
 
 
-testing = False  # Flag to shorten loop execution
-test_length = 2  # Number of pages and links per page to search during testing
 
 
 # Global variables
+testing = True  # Flag to shorten loop execution
+sqlenabled = False
+test_length = 2  # Number of pages and links per page to search during testing
+genres = 'Hotels', 'Resturants', 'Attractions'
 column_titles_h = ['Title', 'Rating', 'Review Count', 'Phone Number', 'Address', 'Locality', 'Country', 'Stars', 'Keywords', 'Date Generated']
 column_titles_r = ['Title', 'Rating', 'Review Count', 'Phone Number', 'Address', 'Locality', 'Country', 'Cusines', 'Date Generated']
 column_titles_a = ['Title', 'Rating', 'Review Count', 'Phone Number', 'Address', 'Locality', 'Country', 'Suggested Duration', 'Price', 'Description', 'Keywords', 'Date Generated']
 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36'}
-# driver_path = os.path.normpath("C:\\Users\\Hayden\\Anaconda3\\selenium\\webdriver")
 
 
 def main():
@@ -38,80 +40,83 @@ def main():
     queries = [s.capitalize() for s in input_list]
     print("Searching: [" + ", ".join(queries), end="]\n")
 
-    # Set up
-    # genres = 'Hotels', 'Resturants', 'Attractions'
     if testing:
         print("Testing Enabled".center(80, '-'), end="")
+
     try:
         os.remove("geckodriver.log")
     except OSError:
         pass
 
     # Create sqlalchemy engine for connecting sql server
-    try:
-        quoted = parse.quote_plus('DRIVER={};Server={};Database={};UID={};PWD={};TDS_Version=8.0;Port=1433;'.format("ODBC Driver 13 for SQL Server", "sql-stg-sc-travel.civfwvdbx0g6.ap-southeast-1.rds.amazonaws.com", "tripAdvisor", "traveltomo", "traveltomo123"))
-        engine = sqlalchemy.create_engine('mssql+pyodbc:///?odbc_connect={}'.format(quoted))
-    except Exception as e:
-        print("\nFailed to connect to sql server\n", e)
-        exit()
+    if sqlenabled:
+        try:
+            quoted = parse.quote_plus('DRIVER={};Server={};Database={};UID={};PWD={};TDS_Version=8.0;Port=1433;'.format("ODBC Driver 13 for SQL Server", "sql-stg-sc-travel.civfwvdbx0g6.ap-southeast-1.rds.amazonaws.com", "tripAdvisor", "traveltomo", "traveltomo123"))
+            engine = sqlalchemy.create_engine('mssql+pyodbc:///?odbc_connect={}'.format(quoted))
+        except Exception as e:
+            print("\nFailed to connect to sql server\n", e)
 
-    for place in queries:
-        # try:
-        #     folder_path = os.path.join("data", place)
-        #     os.mkdir(folder_path)
-        # except OSError:
-        #     pass
-        hotels_df, resturants_df, attractions_df = search(place)
-        # for i, genre in enumerate(genres):
-        #     root_path = place + "_" + genre + "_data.csv"
-        #     filepath = os.path.join(os.path.abspath(folder_path), root_path)
-        #     try:
-        #         dfs[i].to_csv(path_or_buf=filepath)
-        #     except PermissionError:
-        #         pass
+        for place in queries:
 
-        # Append collected data to the table for Hotels, Resturants, and Attractions respectively
-        hotels_df.to_sql("Hotels", con=engine, if_exists="replace", index=False,
-                         dtype={"Title": sqlalchemy.types.NVARCHAR(200),
-                                "Rating": sqlalchemy.types.NVARCHAR(200),
-                                "Review Count": sqlalchemy.types.NVARCHAR(200),
-                                "Phone Number": sqlalchemy.types.NVARCHAR(200),
-                                "Address": sqlalchemy.types.NVARCHAR(200),
-                                "Locality": sqlalchemy.types.NVARCHAR(200),
-                                "Country": sqlalchemy.types.NVARCHAR(200),
-                                "Stars": sqlalchemy.types.NVARCHAR(255),
-                                "User Reviews": sqlalchemy.types.NVARCHAR(200),
-                                "Keywords": sqlalchemy.types.NVARCHAR(200),
-                                "Date Generated": sqlalchemy.types.NVARCHAR(200)
-                                })
+            hotels_df, resturants_df, attractions_df = search(place)
 
-        resturants_df.to_sql("Resturants", con=engine, if_exists="replace", index=False,
-                             dtype={"Title": sqlalchemy.types.NVARCHAR(200),
+            # Append collected data to the table for Hotels, Resturants, and Attractions respectively
+            hotels_df.to_sql("Hotels", con=engine, if_exists="replace", index=False,
+                            dtype={"Title": sqlalchemy.types.NVARCHAR(200),
                                     "Rating": sqlalchemy.types.NVARCHAR(200),
                                     "Review Count": sqlalchemy.types.NVARCHAR(200),
                                     "Phone Number": sqlalchemy.types.NVARCHAR(200),
                                     "Address": sqlalchemy.types.NVARCHAR(200),
                                     "Locality": sqlalchemy.types.NVARCHAR(200),
                                     "Country": sqlalchemy.types.NVARCHAR(200),
-                                    "Cusines": sqlalchemy.types.NVARCHAR(200),
+                                    "Stars": sqlalchemy.types.NVARCHAR(255),
+                                    "User Reviews": sqlalchemy.types.NVARCHAR(200),
+                                    "Keywords": sqlalchemy.types.NVARCHAR(200),
                                     "Date Generated": sqlalchemy.types.NVARCHAR(200)
                                     })
 
-        attractions_df.to_sql("Attractions", con=engine, if_exists="replace", index=False,
-                              dtype={"Title": sqlalchemy.types.NVARCHAR(200),
-                                     "Rating": sqlalchemy.types.NVARCHAR(200),
-                                     "Review Count": sqlalchemy.types.NVARCHAR(200),
-                                     "Phone Number": sqlalchemy.types.NVARCHAR(200),
-                                     "Address": sqlalchemy.types.NVARCHAR(200),
-                                     "Locality": sqlalchemy.types.NVARCHAR(200),
-                                     "Country": sqlalchemy.types.NVARCHAR(200),
-                                     "Suggested Duration": sqlalchemy.types.NVARCHAR(200),
-                                     "Price": sqlalchemy.types.NVARCHAR(200),
-                                     "Description": sqlalchemy.types.NVARCHAR(200),
-                                     "User Reviews": sqlalchemy.types.NVARCHAR(200),
-                                     "Keywords": sqlalchemy.types.NVARCHAR(200),
-                                     "Date Generated": sqlalchemy.types.NVARCHAR(200)
-                                     })
+            resturants_df.to_sql("Resturants", con=engine, if_exists="replace", index=False,
+                                dtype={"Title": sqlalchemy.types.NVARCHAR(200),
+                                        "Rating": sqlalchemy.types.NVARCHAR(200),
+                                        "Review Count": sqlalchemy.types.NVARCHAR(200),
+                                        "Phone Number": sqlalchemy.types.NVARCHAR(200),
+                                        "Address": sqlalchemy.types.NVARCHAR(200),
+                                        "Locality": sqlalchemy.types.NVARCHAR(200),
+                                        "Country": sqlalchemy.types.NVARCHAR(200),
+                                        "Cusines": sqlalchemy.types.NVARCHAR(200),
+                                        "Date Generated": sqlalchemy.types.NVARCHAR(200)
+                                        })
+
+            attractions_df.to_sql("Attractions", con=engine, if_exists="replace", index=False,
+                                dtype={"Title": sqlalchemy.types.NVARCHAR(200),
+                                        "Rating": sqlalchemy.types.NVARCHAR(200),
+                                        "Review Count": sqlalchemy.types.NVARCHAR(200),
+                                        "Phone Number": sqlalchemy.types.NVARCHAR(200),
+                                        "Address": sqlalchemy.types.NVARCHAR(200),
+                                        "Locality": sqlalchemy.types.NVARCHAR(200),
+                                        "Country": sqlalchemy.types.NVARCHAR(200),
+                                        "Suggested Duration": sqlalchemy.types.NVARCHAR(200),
+                                        "Price": sqlalchemy.types.NVARCHAR(200),
+                                        "Description": sqlalchemy.types.NVARCHAR(200),
+                                        "User Reviews": sqlalchemy.types.NVARCHAR(200),
+                                        "Keywords": sqlalchemy.types.NVARCHAR(200),
+                                        "Date Generated": sqlalchemy.types.NVARCHAR(200)
+                                        })
+
+    for place in queries:
+            try:
+                folder_path = os.path.join("data", place)
+                os.mkdir(folder_path)
+            except OSError:
+                pass
+            dfs = search(place)
+            for i, genre in enumerate(genres):
+                root_path = place + "_" + genre + "_data.csv"
+                filepath = os.path.join(os.path.abspath(folder_path), root_path)
+                try:
+                    dfs[i].to_csv(path_or_buf=filepath)
+                except PermissionError:
+                    pass
 
     print(time.strftime("Finished at %H:%M:%S\n", time.localtime()))
 
@@ -141,8 +146,10 @@ def search(query):
             print("Unable to access website")
             print("Are you connected to internet ?")
             exit(0)
+
         driver.find_element_by_class_name("typeahead_input").send_keys(query)
-        driver.find_element_by_class_name("submit_text").click()
+        driver.find_element_by_class_name("typeahead_input").send_keys(Keys.RETURN)
+
 
         data = get_data(driver, "Hotels")
         h_df = pd.DataFrame(data, columns=list(column_titles_h))
@@ -239,8 +246,6 @@ def get_data(driver, genre, max_pages=30):
 
     print("\nDone with", genre)
 
-    # except Exception as e:
-    #     print("STOPPING EARLY BC:", e, e.__class__)
     return data
 
 
@@ -440,7 +445,6 @@ def scrape_attraction(url, soup):
     return row
 
 
-# Implementation of a switch case to call the correct scraping function
 def scrape_article(url, genre):
     try:
         soup = BeautifulSoup(requests.get(url, headers=headers).text, 'html5lib')
@@ -454,6 +458,7 @@ def scrape_article(url, genre):
             raise StopIteration
             # Script is being blocked, wait and then raise and error back in get_data function
 
+    # Implementation of a switch case to call the correct scraping function
     switch = {
         "Hotels": scrape_hotel,
         "Resturants": scrape_resturant,
