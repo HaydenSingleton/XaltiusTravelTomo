@@ -1,6 +1,6 @@
 # TravelTomo
-Main script is "tripAdivisor.py"
-"sql-script.py" and "genCountryTable.py" are utilities for connecting with
+Main script is "tripAdivisor.py", 
+"sql-script.py" and "genCountryTable.py" are utilities
 
 ## Purpose
   This script demonstrates backend data collection techniques
