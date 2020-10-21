@@ -10,11 +10,8 @@ Main script is "tripAdivisor.py"
 This code takes data from Trip Advisor about attractions in the location/city, to be
 to be cleaned using pandas, and analyzed with machine learning. 
 
-Data includes each attraction's Title, Rating, Review Count, Phone Number, Address, Locality, Country, Opening Hours
-
 # Data Gathered
 
-### Main Table
 ## Title
  The title of each attraction, resuturant, or location
 ## Rating
