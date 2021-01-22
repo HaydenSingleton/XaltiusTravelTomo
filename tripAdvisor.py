@@ -1,27 +1,24 @@
 import os
 import sys
-from datetime import datetime
 import time
+from datetime import datetime
 from urllib import parse
 
 import pandas as pd
 import requests
-import sqlalchemy
 from bs4 import BeautifulSoup
-
 from selenium import webdriver
-from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import (NoSuchElementException,
                                         WebDriverException)
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.keys import Keys
 
+## Global variables
+# Flag to shorten loop execution
+testing = True  
 
-
-
-# Global variables
-testing = True  # Flag to shorten loop execution
-sqlenabled = False
-test_length = 2  # Number of pages and links per page to search during testing
+# Number of pages and links per page to search during testing
+test_length = 2  
 genres = 'Hotels', 'Resturants', 'Attractions'
 column_titles_h = ['Title', 'Rating', 'Review Count', 'Phone Number', 'Address', 'Locality', 'Country', 'Stars', 'Keywords', 'Date Generated']
 column_titles_r = ['Title', 'Rating', 'Review Count', 'Phone Number', 'Address', 'Locality', 'Country', 'Cusines', 'Date Generated']
@@ -46,66 +43,11 @@ def main():
     try:
         os.remove("geckodriver.log")
     except OSError:
-        pass
-
-    # Create sqlalchemy engine for connecting sql server
-    if sqlenabled:
-        try:
-            quoted = parse.quote_plus('DRIVER={};Server={};Database={};UID={};PWD={};TDS_Version=8.0;Port=1433;'.format("ODBC Driver 13 for SQL Server", "sql-stg-sc-travel.civfwvdbx0g6.ap-southeast-1.rds.amazonaws.com", "tripAdvisor", "traveltomo", "traveltomo123"))
-            engine = sqlalchemy.create_engine('mssql+pyodbc:///?odbc_connect={}'.format(quoted))
-        except Exception as e:
-            print("\nFailed to connect to sql server\n", e)
-
-        for place in queries:
-
-            hotels_df, resturants_df, attractions_df = search(place)
-
-            # Append collected data to the table for Hotels, Resturants, and Attractions respectively
-            hotels_df.to_sql("Hotels", con=engine, if_exists="replace", index=False,
-                            dtype={"Title": sqlalchemy.types.NVARCHAR(200),
-                                    "Rating": sqlalchemy.types.NVARCHAR(200),
-                                    "Review Count": sqlalchemy.types.NVARCHAR(200),
-                                    "Phone Number": sqlalchemy.types.NVARCHAR(200),
-                                    "Address": sqlalchemy.types.NVARCHAR(200),
-                                    "Locality": sqlalchemy.types.NVARCHAR(200),
-                                    "Country": sqlalchemy.types.NVARCHAR(200),
-                                    "Stars": sqlalchemy.types.NVARCHAR(255),
-                                    "User Reviews": sqlalchemy.types.NVARCHAR(200),
-                                    "Keywords": sqlalchemy.types.NVARCHAR(200),
-                                    "Date Generated": sqlalchemy.types.NVARCHAR(200)
-                                    })
-
-            resturants_df.to_sql("Resturants", con=engine, if_exists="replace", index=False,
-                                dtype={"Title": sqlalchemy.types.NVARCHAR(200),
-                                        "Rating": sqlalchemy.types.NVARCHAR(200),
-                                        "Review Count": sqlalchemy.types.NVARCHAR(200),
-                                        "Phone Number": sqlalchemy.types.NVARCHAR(200),
-                                        "Address": sqlalchemy.types.NVARCHAR(200),
-                                        "Locality": sqlalchemy.types.NVARCHAR(200),
-                                        "Country": sqlalchemy.types.NVARCHAR(200),
-                                        "Cusines": sqlalchemy.types.NVARCHAR(200),
-                                        "Date Generated": sqlalchemy.types.NVARCHAR(200)
-                                        })
-
-            attractions_df.to_sql("Attractions", con=engine, if_exists="replace", index=False,
-                                dtype={"Title": sqlalchemy.types.NVARCHAR(200),
-                                        "Rating": sqlalchemy.types.NVARCHAR(200),
-                                        "Review Count": sqlalchemy.types.NVARCHAR(200),
-                                        "Phone Number": sqlalchemy.types.NVARCHAR(200),
-                                        "Address": sqlalchemy.types.NVARCHAR(200),
-                                        "Locality": sqlalchemy.types.NVARCHAR(200),
-                                        "Country": sqlalchemy.types.NVARCHAR(200),
-                                        "Suggested Duration": sqlalchemy.types.NVARCHAR(200),
-                                        "Price": sqlalchemy.types.NVARCHAR(200),
-                                        "Description": sqlalchemy.types.NVARCHAR(200),
-                                        "User Reviews": sqlalchemy.types.NVARCHAR(200),
-                                        "Keywords": sqlalchemy.types.NVARCHAR(200),
-                                        "Date Generated": sqlalchemy.types.NVARCHAR(200)
-                                        })
+        pass    
 
     for place in queries:
+            folder_path = os.path.join("data", place)
             try:
-                folder_path = os.path.join("data", place)
                 os.mkdir(folder_path)
             except OSError:
                 pass
@@ -123,17 +65,15 @@ def main():
 
 def search(query):
     h_df, r_df, a_df = pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+    print("\nBeginning search in", query)
+    # Set up browser
+    chrome_options = Options()
+    chrome_options.add_argument('--log-level=3')
+    chrome_options.add_argument('--ignore-certificate-errors')
+    chrome_options.add_argument('--ignore-ssl-errors')
+    driver = webdriver.Chrome(chrome_options=chrome_options)
+    driver.set_page_load_timeout(10)
     try:
-        print("\nBeginning search in", query)
-        # Set up browser
-        chrome_options = Options()
-        chrome_options.add_argument('--log-level=3')
-        chrome_options.add_argument('--ignore-certificate-errors')
-        chrome_options.add_argument('--ignore-ssl-errors')
-        driver = webdriver.Chrome(chrome_options=chrome_options)
-        # os.environ['MOZ_HEADLESS'] = '1'
-        # driver = webdriver.Firefox()
-        driver.set_page_load_timeout(10)
 
         # Navigate to trip TripAdvisor, starting with hotels
         main_url = "https://www.tripadvisor.com/Hotels"
