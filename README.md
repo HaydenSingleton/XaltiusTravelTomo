@@ -1,10 +1,10 @@
-# TravelTomo
-Main script is "tripAdivisor.py", 
-"sql-script.py" and "genCountryTable.py" are utilities
+## Xaltius TravelTomo
+##
 
 ## Purpose
-  This script demonstrates backend data collection techniques
-  The information gathered from TripAdvisor.com is saved in a SQL server
+This script demonstrates data collection techniques
+The information gathered from TripAdvisor.com and stored
+in a PANDAS dataframe or directly to an SQL server
 
 ## Script to pull data from Trip Advisor's "Things to do" search results
 This code takes data from Trip Advisor about attractions in the location/city, to be
