@@ -12,53 +12,52 @@ from selenium.common.exceptions import (NoSuchElementException,
                                         WebDriverException)
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.by import By
 
 ## Global variables
+
 # Flag to shorten loop execution
 testing = True  
 
 # Number of pages and links per page to search during testing
-test_length = 2  
+test_length = 2
+
 genres = 'Hotels', 'Resturants', 'Attractions'
+
 column_titles_h = ['Title', 'Rating', 'Review Count', 'Phone Number', 'Address', 'Locality', 'Country', 'Stars', 'Keywords', 'Date Generated']
 column_titles_r = ['Title', 'Rating', 'Review Count', 'Phone Number', 'Address', 'Locality', 'Country', 'Cusines', 'Date Generated']
 column_titles_a = ['Title', 'Rating', 'Review Count', 'Phone Number', 'Address', 'Locality', 'Country', 'Suggested Duration', 'Price', 'Description', 'Keywords', 'Date Generated']
+
 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36'}
 
 
 def main():
     print(time.strftime("Starting at %H:%M:%S", time.localtime()))
 
-    # Get input
-    if len(sys.argv) < 2:
-        input_list = ['singapore']
-    else:
-        input_list = sys.argv[1:]
-    queries = [s.capitalize() for s in input_list]
-    print("Searching: [" + ", ".join(queries), end="]\n")
-
     if testing:
         print("Testing Enabled".center(80, '-'), end="")
 
     try:
         os.remove("geckodriver.log")
-    except OSError:
-        pass    
+    except FileNotFoundError:
+        pass
 
-    for place in queries:
-            folder_path = os.path.join("data", place)
-            try:
-                os.mkdir(folder_path)
-            except OSError:
-                pass
-            dfs = search(place)
-            for i, genre in enumerate(genres):
-                root_path = place + "_" + genre + "_data.csv"
-                filepath = os.path.join(os.path.abspath(folder_path), root_path)
-                try:
-                    dfs[i].to_csv(path_or_buf=filepath)
-                except PermissionError:
-                    pass
+    place = 'local'
+
+    folder_path = os.path.join("data", place)
+    try:
+        os.mkdir(folder_path)
+    except OSError:
+        pass
+
+    dfs = search(place)
+    for i, genre in enumerate(genres):
+        root_path = place + "_" + genre + "_data.csv"
+        filepath = os.path.join(os.path.abspath(folder_path), root_path)
+        try:
+            dfs[i].to_csv(path_or_buf=filepath)
+        except PermissionError:
+            pass
 
     print(time.strftime("Finished at %H:%M:%S\n", time.localtime()))
 
@@ -71,7 +70,7 @@ def search(query):
     chrome_options.add_argument('--log-level=3')
     chrome_options.add_argument('--ignore-certificate-errors')
     chrome_options.add_argument('--ignore-ssl-errors')
-    driver = webdriver.Chrome(chrome_options=chrome_options)
+    driver = webdriver.Chrome(options=chrome_options)
     driver.set_page_load_timeout(10)
     try:
 
@@ -80,15 +79,13 @@ def search(query):
         # This should redirect to the correct local domain as needed (ex- .com.sg) AFAIK
         try:
             driver.get(main_url)
-            driver.find_element_by_id("global-nav-hotels").click()
+            nav = driver.find_element(By.ID,"global-nav-no-refresh-1").click()
         except NoSuchElementException:
-            driver.quit()
-            print("Unable to access website")
-            print("Are you connected to internet ?")
-            exit(0)
+            print("global-nav-no-refresh-1 not found")
+            exit(1)
 
-        driver.find_element_by_class_name("typeahead_input").send_keys(query)
-        driver.find_element_by_class_name("typeahead_input").send_keys(Keys.RETURN)
+        nav.send_keys(query)
+        nav.send_keys(Keys.RETURN)
 
 
         data = get_data(driver, "Hotels")
@@ -138,11 +135,11 @@ def get_data(driver, genre, max_pages=30):
             next_page_loc = ""
 
         soup = BeautifulSoup(driver.page_source, 'html5lib')
-        if genre is "Hotels":
+        if genre == "Hotels":
             results = soup.find("div", class_="relWrap")
             partials = results.find_all("div", class_="listing_title")
 
-        elif genre is "Resturants":
+        elif genre == "Resturants":
             results = soup.find("div", id="EATERY_SEARCH_RESULTS")
             places = results.find_all("div", class_="listing")
             partials = [p.find("div", class_="title") for p in places]
