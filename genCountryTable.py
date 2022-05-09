@@ -29,7 +29,7 @@ def genTable():
 
 def main():
     df = genTable()
-    print(df.head(3))
+    print(f"Generated {df.size // 2} rows")
 
 if __name__ == '__main__':
     main()
