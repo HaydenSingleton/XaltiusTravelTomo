@@ -1,1 +1,5 @@
 .vscode
+chromedriver.exe
+data/**
+data
+.gitignore
